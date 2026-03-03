@@ -99,3 +99,315 @@ h1:focus {
         padding-left: env(safe-area-inset-left);
     }
 }
+
+/* ===== Kids Dictionary App Styles ===== */
+
+.dictionary-page {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+.app-title {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #4a2c8a;
+    text-align: center;
+    margin-bottom: 0.25rem;
+}
+
+.app-subtitle {
+    text-align: center;
+    color: #666;
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.search-section {
+    margin-bottom: 1.5rem;
+}
+
+.search-bar {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.search-input {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border-radius: 2rem;
+    border: 2px solid #c8a7e0;
+    font-size: 1.1rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.search-input:focus {
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+}
+
+.btn-search {
+    padding: 0.75rem 1.25rem;
+    background: #7c3aed;
+    color: white;
+    border: none;
+    border-radius: 2rem;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-search:hover:not(:disabled) {
+    background: #5b21b6;
+}
+
+.btn-search:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-voice {
+    padding: 0.75rem;
+    background: #f0e6ff;
+    border: 2px solid #c8a7e0;
+    border-radius: 50%;
+    font-size: 1.25rem;
+    cursor: pointer;
+    width: 3rem;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.btn-voice:hover:not(:disabled) {
+    background: #ddd0f5;
+}
+
+.btn-voice.listening {
+    background: #ffebee;
+    border-color: #ef5350;
+    animation: pulse 1s infinite;
+}
+
+.btn-voice:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.loading-section {
+    text-align: center;
+    padding: 2rem;
+}
+
+.loading-spinner {
+    font-size: 1.2rem;
+    color: #7c3aed;
+}
+
+.status-message {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    text-align: center;
+    font-size: 1rem;
+    color: #856404;
+    margin-bottom: 1rem;
+}
+
+.result-card {
+    background: white;
+    border-radius: 1.25rem;
+    box-shadow: 0 4px 16px rgba(124, 58, 237, 0.1);
+    padding: 1.5rem;
+    border: 2px solid #e9d5ff;
+}
+
+.result-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.word-title {
+    font-size: 2rem;
+    color: #4a2c8a;
+    font-weight: bold;
+    margin: 0;
+    text-transform: capitalize;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.btn-speak {
+    padding: 0.5rem 1rem;
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 2px solid #7dd3fc;
+    border-radius: 2rem;
+    font-size: 0.9rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-speak:hover {
+    background: #bae6fd;
+}
+
+.btn-favorite {
+    background: none;
+    border: none;
+    font-size: 1.75rem;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    transition: transform 0.2s;
+}
+
+.btn-favorite:hover {
+    transform: scale(1.2);
+}
+
+.btn-favorite.is-favorite {
+    color: #f59e0b;
+}
+
+.result-section {
+    margin-bottom: 1rem;
+}
+
+.section-label {
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: #7c3aed;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.4rem;
+}
+
+.section-content {
+    font-size: 1.1rem;
+    color: #374151;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.example-text {
+    font-style: italic;
+    color: #6b7280;
+}
+
+.synonyms-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.synonym-chip {
+    background: #f3e8ff;
+    color: #6d28d9;
+    border: 1px solid #c4b5fd;
+    border-radius: 2rem;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.synonym-chip:hover {
+    background: #e9d5ff;
+}
+
+/* History & Favorites pages */
+
+.list-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 1rem;
+}
+
+.btn-clear {
+    padding: 0.5rem 1rem;
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fca5a5;
+    border-radius: 2rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-clear:hover {
+    background: #fecaca;
+}
+
+.word-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.word-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: white;
+    border-radius: 0.75rem;
+    padding: 0.9rem 1.1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+    border: 1px solid #e9d5ff;
+    cursor: pointer;
+    transition: box-shadow 0.2s;
+}
+
+.word-list-item:hover {
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
+}
+
+.word-list-text {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #4a2c8a;
+    text-transform: capitalize;
+}
+
+.word-list-date {
+    font-size: 0.8rem;
+    color: #9ca3af;
+}
+
+.btn-remove-favorite {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 50%;
+    transition: color 0.2s, background 0.2s;
+}
+
+.btn-remove-favorite:hover {
+    color: #ef4444;
+    background: #fee2e2;
+}
+

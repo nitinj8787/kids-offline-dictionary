@@ -15,6 +15,8 @@ namespace KidsDictionaryApp.Data
         public async Task InitializeAsync()
         {
             await _database.CreateTableAsync<Word>();
+            await _database.CreateTableAsync<WordHistory>();
+            await _database.CreateTableAsync<FavoriteWord>();
         }
 
         public SQLiteAsyncConnection Database => _database;

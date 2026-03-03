@@ -1,4 +1,7 @@
-﻿public interface ITextToSpeechService
+﻿namespace KidsDictionaryApp.Services.Interfaces
 {
-    Task SpeakAsync(string text);
+    public interface ITextToSpeechService
+    {
+        Task SpeakAsync(string text);
+    }
 }

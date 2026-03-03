@@ -1,0 +1,55 @@
+﻿@page "/favorites"
+@using KidsDictionaryApp.Models
+@using KidsDictionaryApp.Services.Interfaces
+@inject IFavoritesService FavoritesService
+@inject NavigationManager Navigation
+
+<div class="dictionary-page">
+    <h1 class="app-title">⭐ Favorites</h1>
+    <p class="app-subtitle">Words you've saved as favorites</p>
+
+    @if (_favorites == null)
+    {
+        <div class="loading-section">
+            <div class="loading-spinner">⏳ Loading...</div>
+        </div>
+    }
+    else if (_favorites.Count == 0)
+    {
+        <div class="status-message">No favorites yet. Star a word to save it here! ⭐</div>
+    }
+    else
+    {
+        <div class="word-list">
+            @foreach (var item in _favorites)
+            {
+                <div class="word-list-item">
+                    <span class="word-list-text" @onclick="() => SearchWord(item.WordText)">@item.WordText</span>
+                    <button class="btn-remove-favorite" @onclick="() => RemoveFavorite(item.WordText)" title="Remove from favorites">
+                        ✕
+                    </button>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<FavoriteWord>? _favorites;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _favorites = await FavoritesService.GetFavoritesAsync();
+    }
+
+    private async Task RemoveFavorite(string word)
+    {
+        await FavoritesService.RemoveAsync(word);
+        _favorites = await FavoritesService.GetFavoritesAsync();
+    }
+
+    private void SearchWord(string word)
+    {
+        Navigation.NavigateTo($"/?q={Uri.EscapeDataString(word)}");
+    }
+}

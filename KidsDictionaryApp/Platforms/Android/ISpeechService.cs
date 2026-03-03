@@ -1,4 +1,1 @@
-﻿public interface ISpeechService
-{
-    Task<string?> ListenAsync();
-}
+﻿// ISpeechService is defined in KidsDictionaryApp.Services.Interfaces

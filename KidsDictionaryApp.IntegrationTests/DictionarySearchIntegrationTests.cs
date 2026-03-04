@@ -96,6 +96,26 @@ public class DictionarySearchIntegrationTests : IAsyncLifetime, IDisposable
     }
 
     [Fact]
+    public async Task GetAllWords_CanBeSortedAndGroupedAlphabetically()
+    {
+        var words = await _db.Table<Word>().ToListAsync();
+
+        var sorted = words.Where(w => !string.IsNullOrEmpty(w.WordText)).OrderBy(w => w.WordText).ToList();
+        var groups = sorted
+            .GroupBy(w => w.WordText[0].ToString().ToUpper())
+            .OrderBy(g => g.Key)
+            .ToList();
+
+        Assert.NotEmpty(groups);
+        // Each group key should be a single uppercase letter
+        foreach (var group in groups)
+        {
+            Assert.Single(group.Key);
+            Assert.True(char.IsLetter(group.Key[0]));
+        }
+    }
+
+    [Fact]
     public async Task SearchWord_EmptyString_ReturnsNull()
     {
         // Mirrors DictionaryService behavior: empty/whitespace returns null

@@ -1,0 +1,72 @@
+@page "/wordlist"
+@using KidsDictionaryApp.Models
+@using KidsDictionaryApp.Services.Interfaces
+@inject IWordRepository WordRepository
+@inject NavigationManager Navigation
+
+<div class="dictionary-page">
+    <h1 class="app-title">📚 Word List</h1>
+    <p class="app-subtitle">All words available in the dictionary</p>
+
+    @if (_words == null)
+    {
+        <div class="loading-section">
+            <div class="loading-spinner">⏳ Loading...</div>
+        </div>
+    }
+    else
+    {
+        <div class="search-bar" style="margin-bottom: 1rem;">
+            <input class="search-input"
+                   type="text"
+                   placeholder="Filter words..."
+                   @bind="_filter"
+                   @bind:event="oninput" />
+        </div>
+
+        @{
+            var filtered = string.IsNullOrWhiteSpace(_filter)
+                ? _words
+                : _words.Where(w => w.WordText.Contains(_filter.Trim(), StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+
+        @if (filtered.Count == 0)
+        {
+            <div class="status-message">No words found matching "@_filter".</div>
+        }
+        else
+        {
+            <p class="app-subtitle">Showing @filtered.Count of @_words.Count words</p>
+
+            @foreach (var group in filtered.Where(w => !string.IsNullOrEmpty(w.WordText)).GroupBy(w => w.WordText[0].ToString().ToUpper()).OrderBy(g => g.Key))
+            {
+                <h3 class="word-group-header">@group.Key</h3>
+                <div class="word-list">
+                    @foreach (var word in group.OrderBy(w => w.WordText))
+                    {
+                        <div class="word-list-item" @onclick="() => SearchWord(word.WordText)">
+                            <span class="word-list-text">@word.WordText</span>
+                        </div>
+                    }
+                </div>
+            }
+        }
+    }
+</div>
+
+@code {
+    private List<Word>? _words;
+    private string _filter = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _words = (await WordRepository.GetAllWordsAsync())
+            .OrderBy(w => w.WordText)
+            .ToList();
+    }
+
+    private void SearchWord(string word)
+    {
+        Navigation.NavigateTo($"/?q={Uri.EscapeDataString(word)}");
+    }
+}

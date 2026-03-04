@@ -411,3 +411,14 @@ h1:focus {
     background: #fee2e2;
 }
 
+/* Word List page */
+
+.word-group-header {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: #7c3aed;
+    margin: 1rem 0 0.5rem;
+    padding-left: 0.25rem;
+    border-bottom: 2px solid #e9d5ff;
+}
+

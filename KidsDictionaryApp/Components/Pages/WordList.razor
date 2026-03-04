@@ -24,11 +24,9 @@
                    @bind:event="oninput" />
         </div>
 
-        @{
-            var filtered = string.IsNullOrWhiteSpace(_filter)
-                ? _words
-                : _words.Where(w => w.WordText.Contains(_filter.Trim(), StringComparison.OrdinalIgnoreCase)).ToList();
-        }
+        var filtered = string.IsNullOrWhiteSpace(_filter)
+            ? _words
+            : _words.Where(w => w.WordText.Contains(_filter.Trim(), StringComparison.OrdinalIgnoreCase)).ToList();
 
         @if (filtered.Count == 0)
         {

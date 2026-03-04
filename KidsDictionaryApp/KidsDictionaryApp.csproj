@@ -57,6 +57,13 @@
         <MauiAsset Include="Resources\Raw\**" />
     </ItemGroup>
 
+    <!-- For Windows unpackaged builds, copy database to output directory -->
+    <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+        <None Include="Resources\Raw\dictionary.db">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+
     <ItemGroup>
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
         <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
@@ -67,7 +74,7 @@
 
     <ItemGroup>
       <MauiAsset Update="Resources\Raw\dictionary.db">
-        <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </MauiAsset>
     </ItemGroup>
 

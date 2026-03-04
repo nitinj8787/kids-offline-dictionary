@@ -49,13 +49,29 @@ namespace KidsDictionaryApp
                         }
 
                         // Open source stream from app package
-                        using var stream = FileSystem.OpenAppPackageFileAsync("dictionary.db").GetAwaiter().GetResult();
+                        Stream? stream = null;
                         
-                        // Create destination file and copy
-                        using (var fileStream = new FileStream(dbPath, FileMode.Create, FileAccess.Write, FileShare.None))
+#if WINDOWS
+                        // For Windows unpackaged apps, try file system path first
+                        var windowsDbPath = Path.Combine(AppContext.BaseDirectory, "dictionary.db");
+                        if (File.Exists(windowsDbPath))
                         {
-                            stream.CopyTo(fileStream);
-                            fileStream.Flush(flushToDisk: true);
+                            stream = File.OpenRead(windowsDbPath);
+                        }
+                        else
+#endif
+                        {
+                            stream = FileSystem.OpenAppPackageFileAsync("dictionary.db").GetAwaiter().GetResult();
+                        }
+                        
+                        using (stream)
+                        {
+                            // Create destination file and copy
+                            using (var fileStream = new FileStream(dbPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                            {
+                                stream.CopyTo(fileStream);
+                                fileStream.Flush(flushToDisk: true);
+                            }
                         }
                         
                         // Verify the file was created successfully and is a valid SQLite database

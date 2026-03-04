@@ -1,0 +1,56 @@
+﻿@page "/history"
+@using KidsDictionaryApp.Models
+@using KidsDictionaryApp.Services.Interfaces
+@inject IWordHistoryService HistoryService
+@inject NavigationManager Navigation
+
+<div class="dictionary-page">
+    <h1 class="app-title">🕐 Word History</h1>
+    <p class="app-subtitle">Words you've looked up recently</p>
+
+    @if (_history == null)
+    {
+        <div class="loading-section">
+            <div class="loading-spinner">⏳ Loading...</div>
+        </div>
+    }
+    else if (_history.Count == 0)
+    {
+        <div class="status-message">No words looked up yet. Start searching! 🔍</div>
+    }
+    else
+    {
+        <div class="list-actions">
+            <button class="btn-clear" @onclick="ClearHistory">🗑️ Clear History</button>
+        </div>
+        <div class="word-list">
+            @foreach (var item in _history)
+            {
+                <div class="word-list-item" @onclick="() => SearchWord(item.WordText)">
+                    <span class="word-list-text">@item.WordText</span>
+                    <span class="word-list-date">@item.LookedUpAt.ToLocalTime().ToString("MMM d, h:mm tt")</span>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<WordHistory>? _history;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _history = await HistoryService.GetHistoryAsync();
+    }
+
+    private async Task ClearHistory()
+    {
+        await HistoryService.ClearAsync();
+        _history = new List<WordHistory>();
+    }
+
+    private void SearchWord(string word)
+    {
+        Navigation.NavigateTo($"/?q={Uri.EscapeDataString(word)}");
+    }
+}

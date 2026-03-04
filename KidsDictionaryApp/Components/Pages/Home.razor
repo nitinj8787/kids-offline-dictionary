@@ -1,5 +1,123 @@
 ﻿@page "/"
+@using KidsDictionaryApp.ViewModels
+@inject DictionaryViewModel ViewModel
+@implements IDisposable
 
-<h1>Hello, world!</h1>
+<div class="dictionary-page">
+    <div class="search-section">
+        <h1 class="app-title">📖 Kids Dictionary</h1>
+        <p class="app-subtitle">Type a word to learn what it means!</p>
 
-Welcome to your new app.
+        <div class="search-bar">
+            <input class="search-input"
+                   type="text"
+                   placeholder="Type a word here..."
+                   @bind="ViewModel.SearchText"
+                   @bind:event="oninput"
+                   @onkeyup="OnKeyUp" />
+            <button class="btn-search" @onclick="ViewModel.SearchAsync"
+                    disabled="@ViewModel.IsLoading">
+                🔍 Search
+            </button>
+            <button class="btn-voice @(ViewModel.IsListening ? "listening" : "")"
+                    @onclick="ViewModel.ListenAsync"
+                    title="Search by voice"
+                    disabled="@(ViewModel.IsLoading || ViewModel.IsListening)">
+                🎤
+            </button>
+        </div>
+    </div>
+
+    @if (ViewModel.IsLoading)
+    {
+        <div class="loading-section">
+            <div class="loading-spinner">⏳ Looking it up...</div>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(ViewModel.StatusMessage))
+    {
+        <div class="status-message">@ViewModel.StatusMessage</div>
+    }
+
+    @if (ViewModel.CurrentWord != null)
+    {
+        var word = ViewModel.CurrentWord;
+        <div class="result-card">
+            <div class="result-header">
+                <h2 class="word-title">@word.WordText</h2>
+                <div class="action-buttons">
+                    <button class="btn-speak" @onclick="ViewModel.SpeakAsync"
+                            title="Listen to pronunciation">
+                        🔊 Speak
+                    </button>
+                    <button class="btn-favorite @(ViewModel.IsFavorite ? "is-favorite" : "")"
+                            @onclick="ViewModel.ToggleFavoriteAsync"
+                            title="@(ViewModel.IsFavorite ? "Remove from favorites" : "Add to favorites")">
+                        @(ViewModel.IsFavorite ? "⭐" : "☆")
+                    </button>
+                </div>
+            </div>
+
+            <div class="result-section">
+                <h3 class="section-label">📝 Meaning</h3>
+                <p class="section-content">@word.Meaning</p>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(word.Example))
+            {
+                <div class="result-section">
+                    <h3 class="section-label">💬 Example</h3>
+                    <p class="section-content example-text">"@word.Example"</p>
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(word.Synonyms))
+            {
+                <div class="result-section">
+                    <h3 class="section-label">🔄 Synonyms</h3>
+                    <div class="synonyms-list">
+                        @foreach (var synonym in word.Synonyms.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                        {
+                            var s = synonym.Trim();
+                            <span class="synonym-chip" @onclick="() => SearchSynonym(s)">
+                                @s
+                            </span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await ViewModel.SearchAsync();
+        }
+    }
+
+    private async Task SearchSynonym(string word)
+    {
+        ViewModel.SearchText = word;
+        await ViewModel.SearchAsync();
+    }
+
+    public void Dispose()
+    {
+        ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+    }
+}

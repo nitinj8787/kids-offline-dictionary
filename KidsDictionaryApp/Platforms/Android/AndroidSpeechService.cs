@@ -8,8 +8,8 @@ namespace KidsDictionaryApp.Platforms.Android
     {
         public Task<string?> ListenAsync()
         {
-            // For MVP: use MAUI built-in SpeechRecognition if available
-            return Task.FromResult<string?>("example"); // stub for now
+            // For MVP: stub for voice recognition. Replace with full implementation via SpeechRecognizer.
+            return Task.FromResult<string?>(null);
         }
     }
 }

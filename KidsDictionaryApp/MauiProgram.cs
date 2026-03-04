@@ -30,11 +30,17 @@ namespace KidsDictionaryApp
             {
                 var dbPath = Path.Combine(FileSystem.AppDataDirectory, "dictionary.db");
                 
-                // Copy pre-populated database from Resources\Raw if it doesn't exist
-                if (!File.Exists(dbPath))
+                // Copy pre-populated database from Resources\Raw if it doesn't exist or is invalid
+                if (!File.Exists(dbPath) || !IsValidSQLiteDatabase(dbPath))
                 {
                     try
                     {
+                        // Remove any invalid/incomplete file before copying
+                        if (File.Exists(dbPath))
+                        {
+                            File.Delete(dbPath);
+                        }
+
                         // Ensure directory exists
                         var directory = Path.GetDirectoryName(dbPath);
                         if (!string.IsNullOrEmpty(directory))
@@ -52,8 +58,8 @@ namespace KidsDictionaryApp
                             fileStream.Flush(flushToDisk: true);
                         }
                         
-                        // Verify the file was created successfully
-                        if (!File.Exists(dbPath) || new FileInfo(dbPath).Length == 0)
+                        // Verify the file was created successfully and is a valid SQLite database
+                        if (!File.Exists(dbPath) || new FileInfo(dbPath).Length == 0 || !IsValidSQLiteDatabase(dbPath))
                         {
                             throw new InvalidOperationException("Database file was not copied correctly.");
                         }
@@ -99,6 +105,25 @@ namespace KidsDictionaryApp
 #endif
 
             return builder.Build();
+        }
+
+        private static readonly byte[] SqliteMagicHeader = new byte[] { 0x53, 0x51, 0x4C, 0x69, 0x74, 0x65, 0x20, 0x66, 0x6F, 0x72, 0x6D, 0x61, 0x74, 0x20, 0x33, 0x00 };
+
+        private static bool IsValidSQLiteDatabase(string path)
+        {
+            const int SQLiteHeaderSize = 16;
+            try
+            {
+                using var stream = File.OpenRead(path);
+                var header = new byte[SQLiteHeaderSize];
+                if (stream.Read(header, 0, SQLiteHeaderSize) < SQLiteHeaderSize) return false;
+                // SQLite databases begin with the magic string "SQLite format 3\0"
+                return header.SequenceEqual(SqliteMagicHeader);
+            }
+            catch
+            {
+                return false;
+            }
         }
 
 #if DEBUG

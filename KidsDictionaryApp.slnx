@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="KidsDictionaryApp.IntegrationTests/KidsDictionaryApp.IntegrationTests.csproj" />
   <Project Path="KidsDictionaryApp/KidsDictionaryApp.csproj" />
 </Solution>

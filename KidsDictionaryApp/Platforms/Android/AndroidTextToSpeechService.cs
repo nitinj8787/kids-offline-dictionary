@@ -1,5 +1,9 @@
-﻿using Android.Speech.Tts;
+﻿using Android.Content;
+using Android.App;
+using Android.Speech.Tts;
 using KidsDictionaryApp.Services.Interfaces;
+using TextToSpeech = Android.Speech.Tts.TextToSpeech;
+using Application = Android.App.Application;
 
 namespace KidsDictionaryApp.Platforms.Android
 {
@@ -9,7 +13,7 @@ namespace KidsDictionaryApp.Platforms.Android
 
         public AndroidTextToSpeechService()
         {
-            _tts = new TextToSpeech(Android.App.Application.Context, this);
+            _tts = new TextToSpeech(Application.Context, this);
         }
 
         public void OnInit(OperationResult status)

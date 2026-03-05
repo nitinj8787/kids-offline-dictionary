@@ -20,11 +20,6 @@
     }
     else
     {
-        <WordDetailCard Word="_selectedWord"
-                        ShowCloseButton="true"
-                        OnClose="CloseDetail"
-                        OnSynonymClick="SelectWordByText" />
-
         <div class="word-list">
             @foreach (var item in _favorites)
             {
@@ -34,6 +29,15 @@
                         ✕
                     </button>
                 </div>
+                @if (_selectedWordText == item.WordText)
+                {
+                    <div class="inline-word-detail">
+                        <WordDetailCard Word="_selectedWord"
+                                        ShowCloseButton="true"
+                                        OnClose="CloseDetail"
+                                        OnSynonymClick="SelectWordByText" />
+                    </div>
+                }
             }
         </div>
     }

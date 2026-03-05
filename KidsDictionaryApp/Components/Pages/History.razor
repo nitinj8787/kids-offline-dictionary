@@ -24,11 +24,6 @@
             <button class="btn-clear" @onclick="ClearHistory">🗑️ Clear History</button>
         </div>
 
-        <WordDetailCard Word="_selectedWord"
-                        ShowCloseButton="true"
-                        OnClose="CloseDetail"
-                        OnSynonymClick="SelectWordByText" />
-
         <div class="word-list">
             @foreach (var item in _history)
             {
@@ -36,6 +31,15 @@
                     <span class="word-list-text">@item.WordText</span>
                     <span class="word-list-date">@item.LookedUpAt.ToLocalTime().ToString("MMM d, h:mm tt")</span>
                 </div>
+                @if (_selectedWordText == item.WordText)
+                {
+                    <div class="inline-word-detail">
+                        <WordDetailCard Word="_selectedWord"
+                                        ShowCloseButton="true"
+                                        OnClose="CloseDetail"
+                                        OnSynonymClick="SelectWordByText" />
+                    </div>
+                }
             }
         </div>
     }

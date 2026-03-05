@@ -19,11 +19,6 @@
     }
     else
     {
-        <WordDetailCard Word="_selectedWord"
-                        ShowCloseButton="true"
-                        OnClose="CloseDetail"
-                        OnSynonymClick="SelectWordByText" />
-
         <div class="category-list">
             @foreach (var category in _categories.OrderBy(c => c.Key))
             {
@@ -49,6 +44,15 @@
                                         }
                                     </div>
                                 </div>
+                                @if (_selectedWord?.Id == word.Id)
+                                {
+                                    <div class="inline-word-detail">
+                                        <WordDetailCard Word="_selectedWord"
+                                                        ShowCloseButton="true"
+                                                        OnClose="CloseDetail"
+                                                        OnSynonymClick="SelectWordByText" />
+                                    </div>
+                                }
                             }
                         </div>
                     }

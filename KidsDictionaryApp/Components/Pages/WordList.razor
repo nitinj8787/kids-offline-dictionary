@@ -35,11 +35,6 @@
         {
             <p class="app-subtitle">Showing @filtered.Count of @_words.Count words</p>
 
-            <WordDetailCard Word="_selectedWord"
-                            ShowCloseButton="true"
-                            OnClose="CloseDetail"
-                            OnSynonymClick="SelectWordByText" />
-
             @foreach (var group in filtered.Where(w => !string.IsNullOrEmpty(w.WordText)).GroupBy(w => w.WordText[0].ToString().ToUpper()).OrderBy(g => g.Key))
             {
                 <h3 class="word-group-header">@group.Key</h3>
@@ -64,6 +59,15 @@
                                 }
                             </div>
                         </div>
+                        @if (_selectedWord?.Id == word.Id)
+                        {
+                            <div class="inline-word-detail">
+                                <WordDetailCard Word="_selectedWord"
+                                                ShowCloseButton="true"
+                                                OnClose="CloseDetail"
+                                                OnSynonymClick="SelectWordByText" />
+                            </div>
+                        }
                     }
                 </div>
             }

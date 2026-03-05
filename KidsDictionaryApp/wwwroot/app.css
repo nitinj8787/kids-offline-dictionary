@@ -575,3 +575,8 @@ h1:focus {
     background: #f5f0ff;
 }
 
+/* Inline word detail card shown below the clicked word */
+.inline-word-detail {
+    margin: 0.5rem 0 0.75rem;
+}
+

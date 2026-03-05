@@ -70,11 +70,8 @@
             .GroupBy(w => w.Category!.Trim())
             .ToDictionary(g => g.Key, g => g.ToList());
 
-        // Expand all categories by default
-        foreach (var key in _categories.Keys)
-        {
-            _expandedCategories.Add(key);
-        }
+        // Categories are collapsed by default
+        // Users can click to expand individual categories
     }
 
     private void ToggleCategory(string category)

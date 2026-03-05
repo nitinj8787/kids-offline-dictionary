@@ -492,3 +492,61 @@ h1:focus {
     border-bottom: 2px solid #e9d5ff;
 }
 
+/* Categories page */
+
+.category-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.category-card {
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 2px 8px rgba(124, 58, 237, 0.1);
+    border: 2px solid #e9d5ff;
+    overflow: hidden;
+}
+
+.category-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.9rem 1.1rem;
+    background: #f5f0ff;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.2s;
+}
+
+.category-header:hover {
+    background: #ede9fe;
+}
+
+.category-name {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #4a2c8a;
+    flex: 1;
+}
+
+.category-count {
+    font-size: 0.85rem;
+    color: #7c3aed;
+    background: #ede9fe;
+    border-radius: 1rem;
+    padding: 0.15rem 0.6rem;
+    font-weight: 600;
+}
+
+.category-chevron {
+    font-size: 0.75rem;
+    color: #7c3aed;
+}
+
+.category-word-list {
+    padding: 0.5rem 0.75rem 0.75rem;
+}
+

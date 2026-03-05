@@ -294,6 +294,76 @@ h1:focus {
     margin-bottom: 1rem;
 }
 
+/* Word metadata badges (Type & Category) */
+.word-metadata {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.metadata-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 2rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 2px solid;
+}
+
+.metadata-badge .badge-icon {
+    font-size: 1rem;
+}
+
+.type-badge {
+    background: #dbeafe;
+    color: #1e40af;
+    border-color: #93c5fd;
+}
+
+.category-badge {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #fcd34d;
+}
+
+/* Smaller badges for word list */
+.word-list-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    width: 100%;
+}
+
+.word-list-metadata {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.metadata-badge-small {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 1rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: 1px solid;
+}
+
+.metadata-badge-small.type-badge {
+    background: #dbeafe;
+    color: #1e40af;
+    border-color: #93c5fd;
+}
+
+.metadata-badge-small.category-badge {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #fcd34d;
+}
+
 .section-label {
     font-size: 0.9rem;
     font-weight: bold;

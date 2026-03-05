@@ -59,6 +59,26 @@
                 </div>
             </div>
 
+            @if (!string.IsNullOrWhiteSpace(word.Type) || !string.IsNullOrWhiteSpace(word.Category))
+            {
+                <div class="result-section word-metadata">
+                    @if (!string.IsNullOrWhiteSpace(word.Type))
+                    {
+                        <span class="metadata-badge type-badge">
+                            <span class="badge-icon">📖</span>
+                            <span class="badge-label">@word.Type</span>
+                        </span>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(word.Category))
+                    {
+                        <span class="metadata-badge category-badge">
+                            <span class="badge-icon">🏷️</span>
+                            <span class="badge-label">@word.Category</span>
+                        </span>
+                    }
+                </div>
+            }
+
             <div class="result-section">
                 <h3 class="section-label">📝 Meaning</h3>
                 <p class="section-content">@word.Meaning</p>

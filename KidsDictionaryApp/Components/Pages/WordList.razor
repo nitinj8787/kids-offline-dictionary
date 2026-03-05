@@ -43,7 +43,22 @@
                     @foreach (var word in group.OrderBy(w => w.WordText))
                     {
                         <div class="word-list-item" @onclick="() => SearchWord(word.WordText)">
-                            <span class="word-list-text">@word.WordText</span>
+                            <div class="word-list-content">
+                                <span class="word-list-text">@word.WordText</span>
+                                @if (!string.IsNullOrWhiteSpace(word.Type) || !string.IsNullOrWhiteSpace(word.Category))
+                                {
+                                    <div class="word-list-metadata">
+                                        @if (!string.IsNullOrWhiteSpace(word.Type))
+                                        {
+                                            <span class="metadata-badge-small type-badge">@word.Type</span>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(word.Category))
+                                        {
+                                            <span class="metadata-badge-small category-badge">@word.Category</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
                         </div>
                     }
                 </div>

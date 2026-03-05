@@ -10,6 +10,9 @@ namespace KidsDictionaryApp.Models
         [Indexed]
         public string WordText { get; set; }
 
+        public string Type { get; set; } 
+        public string Category { get; set; } 
+
         public string Meaning { get; set; }
 
         public string Example { get; set; }

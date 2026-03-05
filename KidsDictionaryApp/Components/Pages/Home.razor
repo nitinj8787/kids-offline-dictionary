@@ -42,72 +42,9 @@
 
     @if (ViewModel.CurrentWord != null)
     {
-        var word = ViewModel.CurrentWord;
-        <div class="result-card">
-            <div class="result-header">
-                <h2 class="word-title">@word.WordText</h2>
-                <div class="action-buttons">
-                    <button class="btn-speak" @onclick="ViewModel.SpeakAsync"
-                            title="Listen to pronunciation">
-                        🔊 Speak
-                    </button>
-                    <button class="btn-favorite @(ViewModel.IsFavorite ? "is-favorite" : "")"
-                            @onclick="ViewModel.ToggleFavoriteAsync"
-                            title="@(ViewModel.IsFavorite ? "Remove from favorites" : "Add to favorites")">
-                        @(ViewModel.IsFavorite ? "⭐" : "☆")
-                    </button>
-                </div>
-            </div>
-
-            @if (!string.IsNullOrWhiteSpace(word.Type) || !string.IsNullOrWhiteSpace(word.Category))
-            {
-                <div class="result-section word-metadata">
-                    @if (!string.IsNullOrWhiteSpace(word.Type))
-                    {
-                        <span class="metadata-badge type-badge">
-                            <span class="badge-icon">📖</span>
-                            <span class="badge-label">@word.Type</span>
-                        </span>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(word.Category))
-                    {
-                        <span class="metadata-badge category-badge">
-                            <span class="badge-icon">🏷️</span>
-                            <span class="badge-label">@word.Category</span>
-                        </span>
-                    }
-                </div>
-            }
-
-            <div class="result-section">
-                <h3 class="section-label">📝 Meaning</h3>
-                <p class="section-content">@word.Meaning</p>
-            </div>
-
-            @if (!string.IsNullOrWhiteSpace(word.Example))
-            {
-                <div class="result-section">
-                    <h3 class="section-label">💬 Example</h3>
-                    <p class="section-content example-text">"@word.Example"</p>
-                </div>
-            }
-
-            @if (!string.IsNullOrWhiteSpace(word.Synonyms))
-            {
-                <div class="result-section">
-                    <h3 class="section-label">🔄 Synonyms</h3>
-                    <div class="synonyms-list">
-                        @foreach (var synonym in word.Synonyms.Split(',', StringSplitOptions.RemoveEmptyEntries))
-                        {
-                            var s = synonym.Trim();
-                            <span class="synonym-chip" @onclick="() => SearchSynonym(s)">
-                                @s
-                            </span>
-                        }
-                    </div>
-                </div>
-            }
-        </div>
+        <WordDetailCard Word="ViewModel.CurrentWord"
+                        ShowCloseButton="false"
+                        OnSynonymClick="SearchSynonym" />
     }
 </div>
 

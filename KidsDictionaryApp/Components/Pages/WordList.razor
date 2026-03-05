@@ -2,7 +2,6 @@
 @using KidsDictionaryApp.Models
 @using KidsDictionaryApp.Services.Interfaces
 @inject IWordRepository WordRepository
-@inject NavigationManager Navigation
 
 <div class="dictionary-page">
     <h1 class="app-title">📚 Word List</h1>
@@ -36,13 +35,18 @@
         {
             <p class="app-subtitle">Showing @filtered.Count of @_words.Count words</p>
 
+            <WordDetailCard Word="_selectedWord"
+                            ShowCloseButton="true"
+                            OnClose="CloseDetail"
+                            OnSynonymClick="SelectWordByText" />
+
             @foreach (var group in filtered.Where(w => !string.IsNullOrEmpty(w.WordText)).GroupBy(w => w.WordText[0].ToString().ToUpper()).OrderBy(g => g.Key))
             {
                 <h3 class="word-group-header">@group.Key</h3>
                 <div class="word-list">
                     @foreach (var word in group.OrderBy(w => w.WordText))
                     {
-                        <div class="word-list-item" @onclick="() => SearchWord(word.WordText)">
+                        <div class="word-list-item @(_selectedWord?.Id == word.Id ? "selected" : "")" @onclick="() => SelectWord(word)">
                             <div class="word-list-content">
                                 <span class="word-list-text">@word.WordText</span>
                                 @if (!string.IsNullOrWhiteSpace(word.Type) || !string.IsNullOrWhiteSpace(word.Category))
@@ -70,6 +74,7 @@
 @code {
     private List<Word>? _words;
     private string _filter = string.Empty;
+    private Word? _selectedWord;
 
     protected override async Task OnInitializedAsync()
     {
@@ -78,8 +83,23 @@
             .ToList();
     }
 
-    private void SearchWord(string word)
+    private void SelectWord(Word word)
     {
-        Navigation.NavigateTo($"/?q={Uri.EscapeDataString(word)}");
+        _selectedWord = word;
+    }
+
+    private void CloseDetail()
+    {
+        _selectedWord = null;
+    }
+
+    private async Task SelectWordByText(string wordText)
+    {
+        var found = _words?.FirstOrDefault(w => w.WordText.Equals(wordText, StringComparison.OrdinalIgnoreCase))
+            ?? await WordRepository.GetWordAsync(wordText);
+        if (found != null)
+        {
+            _selectedWord = found;
+        }
     }
 }

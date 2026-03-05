@@ -1,0 +1,127 @@
+@using KidsDictionaryApp.Models
+@using KidsDictionaryApp.Services.Interfaces
+@inject ITextToSpeechService TextToSpeech
+@inject IFavoritesService FavoritesService
+@implements IDisposable
+
+@if (Word != null)
+{
+    <div class="result-card" @key="Word.Id">
+        <div class="result-header">
+            <h2 class="word-title">@Word.WordText</h2>
+            <div class="action-buttons">
+                <button class="btn-speak" @onclick="SpeakAsync"
+                        title="Listen to pronunciation">
+                    🔊 Speak
+                </button>
+                <button class="btn-favorite @(_isFavorite ? "is-favorite" : "")"
+                        @onclick="ToggleFavoriteAsync"
+                        title="@(_isFavorite ? "Remove from favorites" : "Add to favorites")">
+                    @(_isFavorite ? "⭐" : "☆")
+                </button>
+                @if (ShowCloseButton)
+                {
+                    <button class="btn-close-card" @onclick="OnClose" title="Close">✕</button>
+                }
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Word.Type) || !string.IsNullOrWhiteSpace(Word.Category))
+        {
+            <div class="result-section word-metadata">
+                @if (!string.IsNullOrWhiteSpace(Word.Type))
+                {
+                    <span class="metadata-badge type-badge">
+                        <span class="badge-icon">📖</span>
+                        <span class="badge-label">@Word.Type</span>
+                    </span>
+                }
+                @if (!string.IsNullOrWhiteSpace(Word.Category))
+                {
+                    <span class="metadata-badge category-badge">
+                        <span class="badge-icon">🏷️</span>
+                        <span class="badge-label">@Word.Category</span>
+                    </span>
+                }
+            </div>
+        }
+
+        <div class="result-section">
+            <h3 class="section-label">📝 Meaning</h3>
+            <p class="section-content">@Word.Meaning</p>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Word.Example))
+        {
+            <div class="result-section">
+                <h3 class="section-label">💬 Example</h3>
+                <p class="section-content example-text">"@Word.Example"</p>
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Word.Synonyms))
+        {
+            <div class="result-section">
+                <h3 class="section-label">🔄 Synonyms</h3>
+                <div class="synonyms-list">
+                    @foreach (var synonym in Word.Synonyms.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        var s = synonym.Trim();
+                        <span class="synonym-chip" @onclick="() => OnSynonymClick.InvokeAsync(s)">
+                            @s
+                        </span>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public Word? Word { get; set; }
+    [Parameter] public bool ShowCloseButton { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<string> OnSynonymClick { get; set; }
+
+    private bool _isFavorite;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Word != null)
+        {
+            _isFavorite = await FavoritesService.IsFavoriteAsync(Word.WordText);
+        }
+    }
+
+    private async Task SpeakAsync()
+    {
+        if (Word == null) return;
+
+        var text = $"{Word.WordText}. {Word.Meaning}";
+        if (!string.IsNullOrWhiteSpace(Word.Example))
+            text += $" For example: {Word.Example}";
+
+        await TextToSpeech.SpeakAsync(text);
+    }
+
+    private async Task ToggleFavoriteAsync()
+    {
+        if (Word == null) return;
+
+        if (_isFavorite)
+        {
+            await FavoritesService.RemoveAsync(Word.WordText);
+            _isFavorite = false;
+        }
+        else
+        {
+            await FavoritesService.AddAsync(Word.WordText);
+            _isFavorite = true;
+        }
+    }
+
+    public void Dispose()
+    {
+        // IDisposable implemented to allow cleanup in future extensions
+    }
+}

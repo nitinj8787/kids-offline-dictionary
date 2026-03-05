@@ -2,7 +2,7 @@
 @using KidsDictionaryApp.Models
 @using KidsDictionaryApp.Services.Interfaces
 @inject IFavoritesService FavoritesService
-@inject NavigationManager Navigation
+@inject IWordRepository WordRepository
 
 <div class="dictionary-page">
     <h1 class="app-title">⭐ Favorites</h1>
@@ -20,11 +20,16 @@
     }
     else
     {
+        <WordDetailCard Word="_selectedWord"
+                        ShowCloseButton="true"
+                        OnClose="CloseDetail"
+                        OnSynonymClick="SelectWordByText" />
+
         <div class="word-list">
             @foreach (var item in _favorites)
             {
-                <div class="word-list-item">
-                    <span class="word-list-text" @onclick="() => SearchWord(item.WordText)">@item.WordText</span>
+                <div class="word-list-item @(_selectedWordText == item.WordText ? "selected" : "")">
+                    <span class="word-list-text" @onclick="() => SelectWordByText(item.WordText)">@item.WordText</span>
                     <button class="btn-remove-favorite" @onclick="() => RemoveFavorite(item.WordText)" title="Remove from favorites">
                         ✕
                     </button>
@@ -36,6 +41,8 @@
 
 @code {
     private List<FavoriteWord>? _favorites;
+    private Word? _selectedWord;
+    private string? _selectedWordText;
 
     protected override async Task OnInitializedAsync()
     {
@@ -44,12 +51,24 @@
 
     private async Task RemoveFavorite(string word)
     {
+        if (_selectedWordText == word)
+        {
+            _selectedWord = null;
+            _selectedWordText = null;
+        }
         await FavoritesService.RemoveAsync(word);
         _favorites = await FavoritesService.GetFavoritesAsync();
     }
 
-    private void SearchWord(string word)
+    private void CloseDetail()
     {
-        Navigation.NavigateTo($"/?q={Uri.EscapeDataString(word)}");
+        _selectedWord = null;
+        _selectedWordText = null;
+    }
+
+    private async Task SelectWordByText(string wordText)
+    {
+        _selectedWordText = wordText;
+        _selectedWord = await WordRepository.GetWordAsync(wordText);
     }
 }

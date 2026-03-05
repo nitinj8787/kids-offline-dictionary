@@ -2,7 +2,7 @@
 @using KidsDictionaryApp.Models
 @using KidsDictionaryApp.Services.Interfaces
 @inject IWordHistoryService HistoryService
-@inject NavigationManager Navigation
+@inject IWordRepository WordRepository
 
 <div class="dictionary-page">
     <h1 class="app-title">🕐 Word History</h1>
@@ -23,10 +23,16 @@
         <div class="list-actions">
             <button class="btn-clear" @onclick="ClearHistory">🗑️ Clear History</button>
         </div>
+
+        <WordDetailCard Word="_selectedWord"
+                        ShowCloseButton="true"
+                        OnClose="CloseDetail"
+                        OnSynonymClick="SelectWordByText" />
+
         <div class="word-list">
             @foreach (var item in _history)
             {
-                <div class="word-list-item" @onclick="() => SearchWord(item.WordText)">
+                <div class="word-list-item @(_selectedWordText == item.WordText ? "selected" : "")" @onclick="() => SelectWordByText(item.WordText)">
                     <span class="word-list-text">@item.WordText</span>
                     <span class="word-list-date">@item.LookedUpAt.ToLocalTime().ToString("MMM d, h:mm tt")</span>
                 </div>
@@ -37,6 +43,8 @@
 
 @code {
     private List<WordHistory>? _history;
+    private Word? _selectedWord;
+    private string? _selectedWordText;
 
     protected override async Task OnInitializedAsync()
     {
@@ -47,10 +55,19 @@
     {
         await HistoryService.ClearAsync();
         _history = new List<WordHistory>();
+        _selectedWord = null;
+        _selectedWordText = null;
     }
 
-    private void SearchWord(string word)
+    private void CloseDetail()
     {
-        Navigation.NavigateTo($"/?q={Uri.EscapeDataString(word)}");
+        _selectedWord = null;
+        _selectedWordText = null;
+    }
+
+    private async Task SelectWordByText(string wordText)
+    {
+        _selectedWordText = wordText;
+        _selectedWord = await WordRepository.GetWordAsync(wordText);
     }
 }

@@ -550,3 +550,28 @@ h1:focus {
     padding: 0.5rem 0.75rem 0.75rem;
 }
 
+/* Close button in WordDetailCard */
+.btn-close-card {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 50%;
+    transition: color 0.2s, background 0.2s;
+    line-height: 1;
+}
+
+.btn-close-card:hover {
+    color: #ef4444;
+    background: #fee2e2;
+}
+
+/* Selected word list item */
+.word-list-item.selected {
+    border-color: #7c3aed;
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
+    background: #f5f0ff;
+}
+

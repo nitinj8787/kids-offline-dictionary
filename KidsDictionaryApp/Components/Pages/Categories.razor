@@ -1,0 +1,92 @@
+@page "/categories"
+@using KidsDictionaryApp.Models
+@using KidsDictionaryApp.Services.Interfaces
+@inject IWordRepository WordRepository
+@inject NavigationManager Navigation
+
+<div class="dictionary-page">
+    <h1 class="app-title">🏷️ Categories</h1>
+    <p class="app-subtitle">Browse words by category</p>
+
+    @if (_words == null)
+    {
+        <div class="loading-section">
+            <div class="loading-spinner">⏳ Loading...</div>
+        </div>
+    }
+    else if (_categories.Count == 0)
+    {
+        <div class="status-message">No categories found.</div>
+    }
+    else
+    {
+        <div class="category-list">
+            @foreach (var category in _categories.OrderBy(c => c.Key))
+            {
+                <div class="category-card">
+                    <button class="category-header" @onclick="() => ToggleCategory(category.Key)">
+                        <span class="category-name">🏷️ @category.Key</span>
+                        <span class="category-count">@category.Value.Count word@(category.Value.Count == 1 ? "" : "s")</span>
+                        <span class="category-chevron">@(_expandedCategories.Contains(category.Key) ? "▲" : "▼")</span>
+                    </button>
+                    @if (_expandedCategories.Contains(category.Key))
+                    {
+                        <div class="word-list category-word-list">
+                            @foreach (var word in category.Value.OrderBy(w => w.WordText))
+                            {
+                                <div class="word-list-item" @onclick="() => SearchWord(word.WordText)">
+                                    <div class="word-list-content">
+                                        <span class="word-list-text">@word.WordText</span>
+                                        @if (!string.IsNullOrWhiteSpace(word.Type))
+                                        {
+                                            <div class="word-list-metadata">
+                                                <span class="metadata-badge-small type-badge">@word.Type</span>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<Word>? _words;
+    private Dictionary<string, List<Word>> _categories = new();
+    private HashSet<string> _expandedCategories = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _words = (await WordRepository.GetAllWordsAsync())
+            .OrderBy(w => w.WordText)
+            .ToList();
+
+        _categories = _words
+            .Where(w => !string.IsNullOrWhiteSpace(w.Category))
+            .GroupBy(w => w.Category!.Trim())
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        // Expand all categories by default
+        foreach (var key in _categories.Keys)
+        {
+            _expandedCategories.Add(key);
+        }
+    }
+
+    private void ToggleCategory(string category)
+    {
+        if (!_expandedCategories.Remove(category))
+        {
+            _expandedCategories.Add(category);
+        }
+    }
+
+    private void SearchWord(string word)
+    {
+        Navigation.NavigateTo($"/?q={Uri.EscapeDataString(word)}");
+    }
+}

@@ -99,7 +99,12 @@ namespace KidsDictionaryApp
             builder.Services.AddSingleton<IDictionaryService, DictionaryService>();
             builder.Services.AddSingleton<IWordHistoryService, WordHistoryService>();
             builder.Services.AddSingleton<IFavoritesService, FavoritesService>();
+            // Platform-specific text-to-speech
+#if WINDOWS
+            builder.Services.AddSingleton<ITextToSpeechService, KidsDictionaryApp.Platforms.Windows.WindowsTextToSpeechService>();
+#else
             builder.Services.AddSingleton<ITextToSpeechService, MauiTextToSpeechService>();
+#endif
 
             // Platform-specific speech recognition
 #if ANDROID

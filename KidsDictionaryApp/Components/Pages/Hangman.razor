@@ -1,0 +1,289 @@
+@page "/hangman"
+@using KidsDictionaryApp.Models
+@using KidsDictionaryApp.Services.Interfaces
+@inject IWordHistoryService HistoryService
+@inject IWordRepository WordRepository
+
+<div class="dictionary-page">
+    <h1 class="app-title">🎮 Hangman</h1>
+    <p class="app-subtitle">Guess the word letter by letter!</p>
+
+    @if (_gameState == HangmanState.SelectMode)
+    {
+        <div class="hangman-mode-select">
+            <h2 class="hangman-section-title">Choose a word from...</h2>
+            <div class="hangman-mode-buttons">
+                <button class="btn-hangman-mode" @onclick="StartFromHistoryAsync">
+                    🕐 My Word History
+                </button>
+                <button class="btn-hangman-mode" @onclick="ShowDifficultySelector">
+                    📊 Difficulty Level
+                </button>
+            </div>
+        </div>
+    }
+    else if (_gameState == HangmanState.SelectDifficulty)
+    {
+        <div class="hangman-mode-select">
+            <h2 class="hangman-section-title">Choose difficulty level</h2>
+            @if (_availableDifficultyLevels.Count == 0)
+            {
+                <div class="status-message">No difficulty levels found in the dictionary.</div>
+            }
+            else
+            {
+                <div class="hangman-difficulty-buttons">
+                    @foreach (var level in _availableDifficultyLevels)
+                    {
+                        var lvl = level;
+                        <button class="btn-difficulty @GetDifficultyClass(lvl)" @onclick="() => StartFromDifficultyAsync(lvl)">
+                            @GetDifficultyLabel(lvl)
+                        </button>
+                    }
+                </div>
+            }
+            <button class="btn-hangman-back" @onclick="() => _gameState = HangmanState.SelectMode">← Back</button>
+        </div>
+    }
+    else if (_gameState == HangmanState.NoWords)
+    {
+        <div class="status-message">@_statusMessage</div>
+        <div class="hangman-mode-select" style="margin-top: 1rem;">
+            <button class="btn-hangman-mode" @onclick="() => _gameState = HangmanState.SelectMode">🔄 Try Again</button>
+        </div>
+    }
+    else if (_currentWord != null)
+    {
+        <div class="hangman-game">
+
+            <!-- SVG Hangman Figure -->
+            <div class="hangman-figure-container">
+                @GetHangmanSvg()
+            </div>
+
+            <!-- Wrong guesses counter -->
+            <div class="hangman-attempts">
+                Attempts left: <strong>@(MaxWrongGuesses - _wrongGuesses)</strong> of @MaxWrongGuesses
+            </div>
+
+            <!-- Hint: word meaning -->
+            <div class="hangman-hint">
+                💡 <em>@_currentWord.Meaning</em>
+            </div>
+
+            <!-- Word display -->
+            <div class="hangman-word">
+                @foreach (var ch in _currentWord.WordText.ToLower())
+                {
+                    if (ch == ' ')
+                    {
+                        <span class="hangman-letter-space"></span>
+                    }
+                    else
+                    {
+                        <span class="hangman-letter @(_guessedLetters.Contains(ch) ? "revealed" : (_gameState == HangmanState.Lost ? "missed" : ""))">
+                            @((_guessedLetters.Contains(ch) || _gameState == HangmanState.Lost) ? ch.ToString().ToUpper() : "_")
+                        </span>
+                    }
+                }
+            </div>
+
+            @if (_gameState == HangmanState.Won)
+            {
+                <div class="hangman-result won">🎉 Excellent! You guessed it!</div>
+                <button class="btn-new-game" @onclick="ResetGame">🔄 Play Again</button>
+            }
+            else if (_gameState == HangmanState.Lost)
+            {
+                <div class="hangman-result lost">😢 The word was <strong>@_currentWord.WordText.ToUpper()</strong>. Keep practising!</div>
+                <button class="btn-new-game" @onclick="ResetGame">🔄 Play Again</button>
+            }
+            else
+            {
+                <!-- Alphabet letter buttons -->
+                <div class="hangman-letters">
+                    @foreach (var ch in "abcdefghijklmnopqrstuvwxyz")
+                    {
+                        var letter = ch;
+                        var isGuessed = _guessedLetters.Contains(letter);
+                        var isCorrect = isGuessed && _currentWord.WordText.ToLower().Contains(letter);
+                        <button class="btn-letter @(isGuessed ? (isCorrect ? "correct" : "wrong") : "")"
+                                disabled="@isGuessed"
+                                @onclick="() => GuessLetter(letter)">
+                            @ch.ToString().ToUpper()
+                        </button>
+                    }
+                </div>
+            }
+
+        </div>
+    }
+</div>
+
+@code {
+    private enum HangmanState { SelectMode, SelectDifficulty, Playing, Won, Lost, NoWords }
+
+    private const int MaxWrongGuesses = 6;
+
+    private HangmanState _gameState = HangmanState.SelectMode;
+    private Word? _currentWord;
+    private HashSet<char> _guessedLetters = new();
+    private int _wrongGuesses;
+    private string _statusMessage = "";
+    private List<int> _availableDifficultyLevels = new();
+    private List<Word> _allWords = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _allWords = await WordRepository.GetAllWordsAsync();
+        _availableDifficultyLevels = _allWords
+            .Where(w => w.DifficultyLevel > 0)
+            .Select(w => w.DifficultyLevel)
+            .Distinct()
+            .OrderBy(l => l)
+            .ToList();
+    }
+
+    private void ShowDifficultySelector()
+    {
+        _gameState = HangmanState.SelectDifficulty;
+    }
+
+    private async Task StartFromHistoryAsync()
+    {
+        var history = await HistoryService.GetHistoryAsync();
+        if (history == null || history.Count == 0)
+        {
+            _gameState = HangmanState.NoWords;
+            _statusMessage = "No word history yet! Look up some words first to play from history. 🔍";
+            return;
+        }
+
+        var picked = history[Random.Shared.Next(history.Count)];
+        var word = await WordRepository.GetWordAsync(picked.WordText);
+        if (word == null)
+        {
+            _gameState = HangmanState.NoWords;
+            _statusMessage = "Could not find the selected word in the dictionary. Try looking up more words!";
+            return;
+        }
+
+        StartGame(word);
+    }
+
+    private Task StartFromDifficultyAsync(int level)
+    {
+        var filtered = _allWords
+            .Where(w => w.DifficultyLevel == level && !string.IsNullOrWhiteSpace(w.WordText))
+            .ToList();
+
+        if (filtered.Count == 0)
+        {
+            _gameState = HangmanState.NoWords;
+            _statusMessage = "No words found for this difficulty level. Try a different level!";
+            return Task.CompletedTask;
+        }
+
+        StartGame(filtered[Random.Shared.Next(filtered.Count)]);
+        return Task.CompletedTask;
+    }
+
+    private void StartGame(Word word)
+    {
+        _currentWord = word;
+        _guessedLetters = new HashSet<char>();
+        _wrongGuesses = 0;
+        _gameState = HangmanState.Playing;
+    }
+
+    private void GuessLetter(char letter)
+    {
+        if (_gameState != HangmanState.Playing || _currentWord == null) return;
+        if (_guessedLetters.Contains(letter)) return;
+
+        _guessedLetters.Add(letter);
+
+        if (!_currentWord.WordText.ToLower().Contains(letter))
+        {
+            _wrongGuesses++;
+            if (_wrongGuesses >= MaxWrongGuesses)
+            {
+                _gameState = HangmanState.Lost;
+                return;
+            }
+        }
+
+        // Check win: all non-space letters have been guessed
+        var wordLetters = _currentWord.WordText.ToLower()
+            .Where(c => c != ' ')
+            .Distinct()
+            .ToHashSet();
+
+        if (wordLetters.All(c => _guessedLetters.Contains(c)))
+        {
+            _gameState = HangmanState.Won;
+        }
+    }
+
+    private void ResetGame()
+    {
+        _currentWord = null;
+        _guessedLetters = new HashSet<char>();
+        _wrongGuesses = 0;
+        _statusMessage = "";
+        _gameState = HangmanState.SelectMode;
+    }
+
+    private string GetDifficultyLabel(int level) => level switch
+    {
+        1 => "⭐ Easy",
+        2 => "⭐⭐ Medium",
+        3 => "⭐⭐⭐ Hard",
+        4 => "⭐⭐⭐⭐ Very Hard",
+        5 => "⭐⭐⭐⭐⭐ Expert",
+        _ => $"Level {level}"
+    };
+
+    private string GetDifficultyClass(int level) => level switch
+    {
+        1 => "easy",
+        2 => "medium",
+        3 => "hard",
+        4 => "very-hard",
+        5 => "expert",
+        _ => ""
+    };
+
+    private MarkupString GetHangmanSvg()
+    {
+        var parts = new System.Text.StringBuilder();
+
+        // Gallows structure (always shown)
+        parts.Append("<svg width=\"140\" height=\"160\" viewBox=\"0 0 140 160\" xmlns=\"http://www.w3.org/2000/svg\">");
+        // Base
+        parts.Append("<line x1=\"10\" y1=\"155\" x2=\"130\" y2=\"155\" stroke=\"#4a2c8a\" stroke-width=\"4\" stroke-linecap=\"round\"/>");
+        // Vertical pole
+        parts.Append("<line x1=\"35\" y1=\"155\" x2=\"35\" y2=\"10\" stroke=\"#4a2c8a\" stroke-width=\"4\" stroke-linecap=\"round\"/>");
+        // Horizontal beam
+        parts.Append("<line x1=\"35\" y1=\"10\" x2=\"95\" y2=\"10\" stroke=\"#4a2c8a\" stroke-width=\"4\" stroke-linecap=\"round\"/>");
+        // Rope
+        parts.Append("<line x1=\"95\" y1=\"10\" x2=\"95\" y2=\"30\" stroke=\"#4a2c8a\" stroke-width=\"4\" stroke-linecap=\"round\"/>");
+
+        // Body parts revealed progressively with each wrong guess
+        if (_wrongGuesses >= 1) // Head
+            parts.Append("<circle cx=\"95\" cy=\"44\" r=\"14\" stroke=\"#e53e3e\" stroke-width=\"3\" fill=\"#fff0f0\"/>");
+        if (_wrongGuesses >= 2) // Body
+            parts.Append("<line x1=\"95\" y1=\"58\" x2=\"95\" y2=\"105\" stroke=\"#e53e3e\" stroke-width=\"3\" stroke-linecap=\"round\"/>");
+        if (_wrongGuesses >= 3) // Left arm
+            parts.Append("<line x1=\"95\" y1=\"70\" x2=\"72\" y2=\"88\" stroke=\"#e53e3e\" stroke-width=\"3\" stroke-linecap=\"round\"/>");
+        if (_wrongGuesses >= 4) // Right arm
+            parts.Append("<line x1=\"95\" y1=\"70\" x2=\"118\" y2=\"88\" stroke=\"#e53e3e\" stroke-width=\"3\" stroke-linecap=\"round\"/>");
+        if (_wrongGuesses >= 5) // Left leg
+            parts.Append("<line x1=\"95\" y1=\"105\" x2=\"72\" y2=\"130\" stroke=\"#e53e3e\" stroke-width=\"3\" stroke-linecap=\"round\"/>");
+        if (_wrongGuesses >= 6) // Right leg
+            parts.Append("<line x1=\"95\" y1=\"105\" x2=\"118\" y2=\"130\" stroke=\"#e53e3e\" stroke-width=\"3\" stroke-linecap=\"round\"/>");
+
+        parts.Append("</svg>");
+        return new MarkupString(parts.ToString());
+    }
+}

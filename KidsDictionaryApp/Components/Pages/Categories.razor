@@ -2,6 +2,7 @@
 @using KidsDictionaryApp.Models
 @using KidsDictionaryApp.Services.Interfaces
 @inject IWordRepository WordRepository
+@inject IWordHistoryService HistoryService
 
 <div class="dictionary-page">
     <h1 class="app-title">🏷️ Categories</h1>
@@ -91,9 +92,17 @@
         }
     }
 
-    private void SelectWord(Word word)
+    private async Task SelectWord(Word word)
     {
-        _selectedWord = _selectedWord?.Id == word.Id ? null : word;
+        if (_selectedWord?.Id == word.Id)
+        {
+            _selectedWord = null;
+        }
+        else
+        {
+            _selectedWord = word;
+            await HistoryService.AddAsync(word.WordText);
+        }
     }
 
     private void CloseDetail()
@@ -118,6 +127,11 @@
         else
         {
             _selectedWord = await WordRepository.GetWordAsync(wordText);
+        }
+
+        if (_selectedWord != null)
+        {
+            await HistoryService.AddAsync(_selectedWord.WordText);
         }
     }
 }

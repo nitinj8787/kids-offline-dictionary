@@ -151,7 +151,11 @@ namespace KidsDictionaryApp
             var rawDbPath = Path.Combine(projectPath, "Resources", "Raw", "dictionary.db");
 
             // Ensure directory exists
-            Directory.CreateDirectory(Path.GetDirectoryName(rawDbPath));
+            var rawDbDirectory = Path.GetDirectoryName(rawDbPath);
+            if (!string.IsNullOrEmpty(rawDbDirectory))
+            {
+                Directory.CreateDirectory(rawDbDirectory);
+            }
 
             // Delete if exists to recreate
             if (File.Exists(rawDbPath))

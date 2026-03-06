@@ -89,7 +89,7 @@
 
     private void SelectWord(Word word)
     {
-        _selectedWord = word;
+        _selectedWord = _selectedWord?.Id == word.Id ? null : word;
     }
 
     private void CloseDetail()
@@ -99,11 +99,20 @@
 
     private async Task SelectWordByText(string wordText)
     {
-        var found = _words?.FirstOrDefault(w => w.WordText.Equals(wordText, StringComparison.OrdinalIgnoreCase))
-            ?? await WordRepository.GetWordAsync(wordText);
+        // First look in the full word list so the inline card becomes visible.
+        var found = _words?.FirstOrDefault(w =>
+            w.WordText.Equals(wordText, StringComparison.OrdinalIgnoreCase));
+
         if (found != null)
         {
+            // Clear the filter so the synonym word is visible in the list.
+            _filter = string.Empty;
             _selectedWord = found;
+        }
+        else
+        {
+            // Fall back to a database lookup when the word isn't in the local list.
+            _selectedWord = await WordRepository.GetWordAsync(wordText);
         }
     }
 }

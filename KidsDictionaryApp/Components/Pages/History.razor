@@ -37,7 +37,7 @@
                         <WordDetailCard Word="_selectedWord"
                                         ShowCloseButton="true"
                                         OnClose="CloseDetail"
-                                        OnSynonymClick="SelectWordByText" />
+                                        OnSynonymClick="NavigateToSynonym" />
                     </div>
                 }
             }
@@ -71,7 +71,28 @@
 
     private async Task SelectWordByText(string wordText)
     {
+        if (_selectedWordText == wordText)
+        {
+            _selectedWord = null;
+            _selectedWordText = null;
+            return;
+        }
         _selectedWordText = wordText;
+        _selectedWord = await WordRepository.GetWordAsync(wordText);
+    }
+
+    private async Task NavigateToSynonym(string wordText)
+    {
+        // Keep the current list item highlighted; only update the displayed definition.
+        // If the synonym happens to be in the history list, move the highlight there.
+        var matchedHistory = _history?.FirstOrDefault(h =>
+            h.WordText.Equals(wordText, StringComparison.OrdinalIgnoreCase));
+
+        if (matchedHistory != null)
+        {
+            _selectedWordText = matchedHistory.WordText;
+        }
+
         _selectedWord = await WordRepository.GetWordAsync(wordText);
     }
 }

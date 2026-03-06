@@ -26,14 +26,14 @@
             </div>
         </div>
 
-        @if (!string.IsNullOrWhiteSpace(Word.Type) || !string.IsNullOrWhiteSpace(Word.Category))
+        @if (!string.IsNullOrWhiteSpace(Word.PartOfSpeech) || !string.IsNullOrWhiteSpace(Word.Category))
         {
             <div class="result-section word-metadata">
-                @if (!string.IsNullOrWhiteSpace(Word.Type))
+                @if (!string.IsNullOrWhiteSpace(Word.PartOfSpeech))
                 {
                     <span class="metadata-badge type-badge">
                         <span class="badge-icon">📖</span>
-                        <span class="badge-label">@Word.Type</span>
+                        <span class="badge-label">@Word.PartOfSpeech</span>
                     </span>
                 }
                 @if (!string.IsNullOrWhiteSpace(Word.Category))
@@ -59,6 +59,22 @@
             </div>
         }
 
+        @if (!string.IsNullOrWhiteSpace(Word.Phonics))
+        {
+            <div class="result-section">
+                <h3 class="section-label">🔤 Phonics</h3>
+                <p class="section-content">@Word.Phonics</p>
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Word.Syllables))
+        {
+            <div class="result-section">
+                <h3 class="section-label">🔡 Syllables</h3>
+                <p class="section-content">@Word.Syllables</p>
+            </div>
+        }
+
         @if (!string.IsNullOrWhiteSpace(Word.Synonyms))
         {
             <div class="result-section">
@@ -69,6 +85,22 @@
                         var s = synonym.Trim();
                         <span class="synonym-chip" @onclick="() => OnSynonymClick.InvokeAsync(s)">
                             @s
+                        </span>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Word.Antonyms))
+        {
+            <div class="result-section">
+                <h3 class="section-label">↔️ Antonyms</h3>
+                <div class="synonyms-list">
+                    @foreach (var antonym in Word.Antonyms.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        var a = antonym.Trim();
+                        <span class="synonym-chip" @onclick="() => OnSynonymClick.InvokeAsync(a)">
+                            @a
                         </span>
                     }
                 </div>

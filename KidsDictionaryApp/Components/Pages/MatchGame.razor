@@ -1,0 +1,243 @@
+@page "/match-game"
+@using KidsDictionaryApp.Models
+@using KidsDictionaryApp.Services.Interfaces
+@inject IWordHistoryService HistoryService
+@inject IWordRepository WordRepository
+
+<div class="dictionary-page">
+    <h1 class="app-title">🎮 Match the Word</h1>
+    <p class="app-subtitle">Match each word with its meaning!</p>
+
+    @if (_loading)
+    {
+        <div class="loading-section">
+            <div class="loading-spinner">⏳ Loading game...</div>
+        </div>
+    }
+    else if (_notEnoughWords)
+    {
+        <div class="status-message">
+            You need at least 2 looked-up words to play. Go search for some words first! 🔍
+        </div>
+    }
+    else if (_gameComplete)
+    {
+        <div class="game-complete-card">
+            <div class="game-complete-emoji">🎉</div>
+            <h2 class="game-complete-title">Well Done!</h2>
+            <p class="game-complete-score">You matched all @_pairs.Count words!</p>
+            <p class="game-complete-attempts">Attempts: @_attempts</p>
+            <button class="btn-play-again" @onclick="StartGame">🔄 Play Again</button>
+        </div>
+    }
+    else
+    {
+        <div class="game-info-bar">
+            <span class="game-score">✅ Matched: @_matchedCount / @_pairs.Count</span>
+            <span class="game-attempts">🎯 Attempts: @_attempts</span>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_feedbackMessage))
+        {
+            <div class="game-feedback @_feedbackClass">@_feedbackMessage</div>
+        }
+
+        <div class="match-game-grid">
+            <div class="match-column">
+                <h3 class="match-column-header">📝 Words</h3>
+                @foreach (var item in _shuffledWords)
+                {
+                    <button class="match-tile word-tile
+                                   @(item.IsMatched ? "matched" : "")
+                                   @(_selectedWordId == item.PairId && !item.IsMatched ? "selected" : "")
+                                   @(item.IsWrong ? "wrong" : "")"
+                            disabled="@item.IsMatched"
+                            @onclick="() => SelectWord(item)">
+                        @item.Text
+                    </button>
+                }
+            </div>
+
+            <div class="match-column">
+                <h3 class="match-column-header">💬 Meanings</h3>
+                @foreach (var item in _shuffledMeanings)
+                {
+                    <button class="match-tile meaning-tile
+                                   @(item.IsMatched ? "matched" : "")
+                                   @(_selectedMeaningId == item.PairId && !item.IsMatched ? "selected" : "")
+                                   @(item.IsWrong ? "wrong" : "")"
+                            disabled="@item.IsMatched"
+                            @onclick="() => SelectMeaning(item)">
+                        @item.Text
+                    </button>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private record MatchItem(int PairId, string Text)
+    {
+        public bool IsMatched { get; set; }
+        public bool IsWrong { get; set; }
+    }
+
+    private bool _loading = true;
+    private bool _notEnoughWords;
+    private bool _gameComplete;
+
+    private List<MatchItem> _shuffledWords = new();
+    private List<MatchItem> _shuffledMeanings = new();
+    private List<(string Word, string Meaning)> _pairs = new();
+
+    private int? _selectedWordId;
+    private int? _selectedMeaningId;
+    private int _matchedCount;
+    private int _attempts;
+
+    private string _feedbackMessage = string.Empty;
+    private string _feedbackClass = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadWordsAndStartGame();
+    }
+
+    private async Task LoadWordsAndStartGame()
+    {
+        _loading = true;
+        _notEnoughWords = false;
+        _gameComplete = false;
+        StateHasChanged();
+
+        var history = await HistoryService.GetHistoryAsync();
+
+        var wordTasks = history.Select(h => WordRepository.GetWordAsync(h.WordText));
+        var wordResults = await Task.WhenAll(wordTasks);
+        var wordObjects = wordResults
+            .Where(w => w != null && !string.IsNullOrWhiteSpace(w.Meaning))
+            .Select(w => w!)
+            .ToList();
+
+        if (wordObjects.Count < 2)
+        {
+            _notEnoughWords = true;
+            _loading = false;
+            return;
+        }
+
+        // Limit to 8 pairs for a playable game size
+        var selected = wordObjects.OrderBy(_ => Random.Shared.Next()).Take(8).ToList();
+
+        _pairs = selected.Select(w => (w.WordText, TruncateMeaning(w.Meaning))).ToList();
+
+        _loading = false;
+        StartGame();
+    }
+
+    private void StartGame()
+    {
+        _gameComplete = false;
+        _matchedCount = 0;
+        _attempts = 0;
+        _selectedWordId = null;
+        _selectedMeaningId = null;
+        _feedbackMessage = string.Empty;
+        _feedbackClass = string.Empty;
+
+        _shuffledWords = _pairs
+            .Select((p, i) => new MatchItem(i, p.Word))
+            .OrderBy(_ => Random.Shared.Next())
+            .ToList();
+
+        _shuffledMeanings = _pairs
+            .Select((p, i) => new MatchItem(i, p.Meaning))
+            .OrderBy(_ => Random.Shared.Next())
+            .ToList();
+    }
+
+    private async Task SelectWord(MatchItem item)
+    {
+        if (item.IsMatched) return;
+
+        _selectedWordId = item.PairId;
+        _feedbackMessage = string.Empty;
+
+        if (_selectedMeaningId.HasValue)
+            await CheckMatch();
+    }
+
+    private async Task SelectMeaning(MatchItem item)
+    {
+        if (item.IsMatched) return;
+
+        _selectedMeaningId = item.PairId;
+        _feedbackMessage = string.Empty;
+
+        if (_selectedWordId.HasValue)
+            await CheckMatch();
+    }
+
+    private async Task CheckMatch()
+    {
+        if (!_selectedWordId.HasValue || !_selectedMeaningId.HasValue)
+            return;
+
+        _attempts++;
+
+        if (_selectedWordId == _selectedMeaningId)
+        {
+            // Correct match
+            var wordItem = _shuffledWords.First(w => w.PairId == _selectedWordId);
+            var meaningItem = _shuffledMeanings.First(m => m.PairId == _selectedMeaningId);
+            wordItem.IsMatched = true;
+            meaningItem.IsMatched = true;
+
+            _matchedCount++;
+            _feedbackMessage = "✅ Correct!";
+            _feedbackClass = "feedback-correct";
+
+            _selectedWordId = null;
+            _selectedMeaningId = null;
+
+            if (_matchedCount == _pairs.Count)
+            {
+                await Task.Delay(600);
+                _gameComplete = true;
+            }
+        }
+        else
+        {
+            // Wrong match — briefly highlight wrong then reset
+            var wordItem = _shuffledWords.FirstOrDefault(w => w.PairId == _selectedWordId);
+            var meaningItem = _shuffledMeanings.FirstOrDefault(m => m.PairId == _selectedMeaningId);
+
+            if (wordItem != null) wordItem.IsWrong = true;
+            if (meaningItem != null) meaningItem.IsWrong = true;
+
+            _feedbackMessage = "❌ Not quite! Try again.";
+            _feedbackClass = "feedback-wrong";
+
+            StateHasChanged();
+            await Task.Delay(800);
+
+            if (wordItem != null) wordItem.IsWrong = false;
+            if (meaningItem != null) meaningItem.IsWrong = false;
+
+            _selectedWordId = null;
+            _selectedMeaningId = null;
+        }
+    }
+
+    private static string TruncateMeaning(string meaning)
+    {
+        const int maxLength = 80;
+        if (meaning.Length <= maxLength)
+            return meaning;
+
+        var truncated = meaning[..maxLength];
+        var lastSpace = truncated.LastIndexOf(' ');
+        return (lastSpace > 0 ? truncated[..lastSpace] : truncated) + "…";
+    }
+}

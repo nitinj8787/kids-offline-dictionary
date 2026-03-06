@@ -44,12 +44,12 @@
                         <div class="word-list-item @(_selectedWord?.Id == word.Id ? "selected" : "")" @onclick="() => SelectWord(word)">
                             <div class="word-list-content">
                                 <span class="word-list-text">@word.WordText</span>
-                                @if (!string.IsNullOrWhiteSpace(word.Type) || !string.IsNullOrWhiteSpace(word.Category))
+                                @if (!string.IsNullOrWhiteSpace(word.PartOfSpeech) || !string.IsNullOrWhiteSpace(word.Category))
                                 {
                                     <div class="word-list-metadata">
-                                        @if (!string.IsNullOrWhiteSpace(word.Type))
+                                        @if (!string.IsNullOrWhiteSpace(word.PartOfSpeech))
                                         {
-                                            <span class="metadata-badge-small type-badge">@word.Type</span>
+                                            <span class="metadata-badge-small type-badge">@word.PartOfSpeech</span>
                                         }
                                         @if (!string.IsNullOrWhiteSpace(word.Category))
                                         {

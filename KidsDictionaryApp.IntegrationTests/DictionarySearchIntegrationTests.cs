@@ -164,11 +164,21 @@ public class Word
 
     public string Meaning { get; set; } = string.Empty;
 
-    public string Type { get; set; } = string.Empty;
+    public string PartOfSpeech { get; set; } = string.Empty;
 
     public string Category { get; set; } = string.Empty;
 
     public string Example { get; set; } = string.Empty;
 
+    public string Phonics { get; set; } = string.Empty;
+
+    public string Syllables { get; set; } = string.Empty;
+
     public string Synonyms { get; set; } = string.Empty;
+
+    public string Antonyms { get; set; } = string.Empty;
+
+    public int DifficultyLevel { get; set; }
+
+    public int FrequencyRank { get; set; }
 }

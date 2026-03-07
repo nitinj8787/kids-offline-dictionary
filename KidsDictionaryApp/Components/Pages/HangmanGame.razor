@@ -341,7 +341,10 @@
 
     private async Task RecordHangmanWinAsync()
     {
-        if (ProfileService.ActiveProfile != null)
+        if (ProfileService.ActiveProfile == null)
+            return;
+
+        try
         {
             await ProgressService.RecordGameScoreAsync(
                 ProfileService.ActiveProfile.Id,
@@ -351,8 +354,13 @@
                 completed: true);
             _newAchievements = await AchievementService.CheckAndAwardAchievementsAsync(
                 ProfileService.ActiveProfile.Id);
-            await InvokeAsync(StateHasChanged);
         }
+        catch (Exception)
+        {
+            // Non-critical: progress recording failure should not interrupt gameplay
+        }
+
+        await InvokeAsync(StateHasChanged);
     }
 
     private void PlayAgain()

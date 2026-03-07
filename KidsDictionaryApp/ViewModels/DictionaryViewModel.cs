@@ -12,6 +12,8 @@ namespace KidsDictionaryApp.ViewModels
         private readonly ISpeechService _speechService;
         private readonly IWordHistoryService _historyService;
         private readonly IFavoritesService _favoritesService;
+        private readonly IProfileService _profileService;
+        private readonly IProgressService _progressService;
 
         [ObservableProperty]
         private string _searchText = string.Empty;
@@ -36,13 +38,17 @@ namespace KidsDictionaryApp.ViewModels
             ITextToSpeechService textToSpeechService,
             ISpeechService speechService,
             IWordHistoryService historyService,
-            IFavoritesService favoritesService)
+            IFavoritesService favoritesService,
+            IProfileService profileService,
+            IProgressService progressService)
         {
             _dictionaryService = dictionaryService;
             _textToSpeechService = textToSpeechService;
             _speechService = speechService;
             _historyService = historyService;
             _favoritesService = favoritesService;
+            _profileService = profileService;
+            _progressService = progressService;
         }
 
         [RelayCommand]
@@ -66,6 +72,14 @@ namespace KidsDictionaryApp.ViewModels
                 {
                     await _historyService.AddAsync(CurrentWord.WordText);
                     IsFavorite = await _favoritesService.IsFavoriteAsync(CurrentWord.WordText);
+
+                    // Track progress for the active profile
+                    if (_profileService.ActiveProfile != null)
+                    {
+                        await _progressService.RecordWordLookupAsync(
+                            _profileService.ActiveProfile.Id,
+                            CurrentWord.WordText);
+                    }
                 }
             }
             finally

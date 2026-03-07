@@ -3,6 +3,9 @@
 @using KidsDictionaryApp.Services.Interfaces
 @inject IWordHistoryService HistoryService
 @inject IWordRepository WordRepository
+@inject IProfileService ProfileService
+@inject IProgressService ProgressService
+@inject IAchievementService AchievementService
 
 <div class="dictionary-page">
     <h1 class="app-title">🎯 Hangman</h1>
@@ -75,6 +78,16 @@
             <h2 class="game-complete-title">You Got It!</h2>
             <p class="game-complete-score">The word was: <strong>@_currentWord</strong></p>
             <p class="game-complete-attempts">Wrong guesses: @_wrongGuesses / @MaxWrongGuesses</p>
+            @if (_newAchievements.Count > 0)
+            {
+                <div class="achievement-toast">
+                    🏅 New badge@(_newAchievements.Count > 1 ? "s" : "") earned!
+                    @foreach (var a in _newAchievements)
+                    {
+                        <span class="toast-badge">@a.BadgeEmoji @a.Name</span>
+                    }
+                </div>
+            }
             <div class="hangman-actions">
                 <button class="btn-play-again" @onclick="PlayAgain">🔄 Play Again</button>
                 <button class="btn-back-to-menu" @onclick="BackToMenu">🏠 Change Mode</button>
@@ -222,6 +235,7 @@
 
     private List<Word> _wordPool = new();
     private string _currentMode = string.Empty;
+    private List<Achievement> _newAchievements = new();
 
     private static bool IsValidGameWord(Word? word) =>
         word != null &&
@@ -318,12 +332,32 @@
             // Win check: all alphabetical letters in the word must be guessed
             var alphaLetters = _currentWord.ToLower().Where(char.IsLetter).Distinct();
             if (alphaLetters.All(c => _guessedLetters.Contains(c)))
+            {
                 _gameWon = true;
+                _ = RecordHangmanWinAsync();
+            }
+        }
+    }
+
+    private async Task RecordHangmanWinAsync()
+    {
+        if (ProfileService.ActiveProfile != null)
+        {
+            await ProgressService.RecordGameScoreAsync(
+                ProfileService.ActiveProfile.Id,
+                "Hangman",
+                (MaxWrongGuesses - _wrongGuesses) * 15,
+                _guessedLetters.Count,
+                completed: true);
+            _newAchievements = await AchievementService.CheckAndAwardAchievementsAsync(
+                ProfileService.ActiveProfile.Id);
+            await InvokeAsync(StateHasChanged);
         }
     }
 
     private void PlayAgain()
     {
+        _newAchievements = new List<Achievement>();
         if (_wordPool.Count > 0)
             StartNewRound();
     }

@@ -1,0 +1,118 @@
+@page "/achievements"
+@using KidsDictionaryApp.Models
+@using KidsDictionaryApp.Services.Interfaces
+@inject IProfileService ProfileService
+@inject IAchievementService AchievementService
+@implements IDisposable
+
+<div class="dictionary-page">
+    <h1 class="app-title">🏅 Achievements</h1>
+
+    @if (ProfileService.ActiveProfile == null)
+    {
+        <p class="app-subtitle">No profile selected.</p>
+        <div class="status-message">
+            Please <a href="profiles">select a profile</a> to view achievements.
+        </div>
+    }
+    else
+    {
+        var profile = ProfileService.ActiveProfile;
+
+        <p class="app-subtitle">
+            Badges for <strong>@profile.AvatarEmoji @profile.Name</strong> —
+            @_earnedIds.Count / @_allAchievements.Count unlocked
+        </p>
+
+        @if (_loading)
+        {
+            <div class="loading-section">
+                <div class="loading-spinner">⏳ Loading...</div>
+            </div>
+        }
+        else
+        {
+            @foreach (var category in _allAchievements.GroupBy(a => a.Category))
+            {
+                <div class="achievement-category">
+                    <h2 class="section-title">@CategoryEmoji(category.Key) @category.Key</h2>
+                    <div class="achievement-grid">
+                        @foreach (var achievement in category)
+                        {
+                            bool earned = _earnedIds.Contains(achievement.Id);
+                            DateTime? earnedAt = earned ? _earnedMap[achievement.Id].EarnedAt : null;
+                            <div class="achievement-badge-card @(earned ? "badge-earned" : "badge-locked")">
+                                <div class="badge-emoji">@(earned ? achievement.BadgeEmoji : "🔒")</div>
+                                <div class="badge-name">@achievement.Name</div>
+                                <div class="badge-description">@achievement.Description</div>
+                                @if (earned && earnedAt.HasValue)
+                                {
+                                    <div class="badge-earned-date">
+                                        Earned @earnedAt.Value.ToLocalTime().ToString("MMM dd, yyyy")
+                                    </div>
+                                }
+                                else if (!earned)
+                                {
+                                    <div class="badge-hint">+@achievement.BonusScore pts on unlock</div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        }
+    }
+</div>
+
+@code {
+    private List<Achievement> _allAchievements = new();
+    private HashSet<int> _earnedIds = new();
+    private Dictionary<int, ProfileAchievement> _earnedMap = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ProfileService.ActiveProfileChanged += OnProfileChanged;
+        await LoadDataAsync();
+    }
+
+    private async void OnProfileChanged()
+    {
+        await LoadDataAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        _allAchievements = await AchievementService.GetAllAchievementsAsync();
+
+        var profile = ProfileService.ActiveProfile;
+        if (profile != null)
+        {
+            var earned = await AchievementService.GetEarnedAchievementsAsync(profile.Id);
+            _earnedIds = earned.Select(e => e.AchievementId).ToHashSet();
+            _earnedMap = earned.ToDictionary(e => e.AchievementId);
+        }
+        else
+        {
+            _earnedIds = new HashSet<int>();
+            _earnedMap = new Dictionary<int, ProfileAchievement>();
+        }
+
+        _loading = false;
+    }
+
+    private static string CategoryEmoji(string category) => category switch
+    {
+        "Learning" => "📚",
+        "Gaming"   => "🎮",
+        "Score"    => "⭐",
+        _          => "🏅"
+    };
+
+    public void Dispose()
+    {
+        ProfileService.ActiveProfileChanged -= OnProfileChanged;
+    }
+}

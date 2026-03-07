@@ -1,0 +1,346 @@
+@page "/hangman"
+@using KidsDictionaryApp.Models
+@using KidsDictionaryApp.Services.Interfaces
+@inject IWordHistoryService HistoryService
+@inject IWordRepository WordRepository
+
+<div class="dictionary-page">
+    <h1 class="app-title">🎯 Hangman</h1>
+    <p class="app-subtitle">Guess the word letter by letter!</p>
+
+    @if (_selectingMode)
+    {
+        <div class="hangman-mode-selection">
+            <div class="hangman-mode-card" @onclick="StartFromHistory">
+                <div class="hangman-mode-icon">📚</div>
+                <h2 class="hangman-mode-title">From My History</h2>
+                <p class="hangman-mode-desc">Guess words you've recently looked up</p>
+                <button class="btn-mode-history">Play ▶</button>
+            </div>
+
+            <div class="hangman-mode-divider">— or choose a difficulty —</div>
+
+            <div class="hangman-difficulty-row">
+                <button class="btn-difficulty easy" @onclick='() => StartFromDifficulty("easy")'>
+                    🟢<br />Easy
+                </button>
+                <button class="btn-difficulty medium" @onclick='() => StartFromDifficulty("medium")'>
+                    🟡<br />Medium
+                </button>
+                <button class="btn-difficulty hard" @onclick='() => StartFromDifficulty("hard")'>
+                    🔴<br />Hard
+                </button>
+            </div>
+        </div>
+    }
+    else if (_loading)
+    {
+        <div class="loading-section">
+            <div class="loading-spinner">⏳ Loading game...</div>
+        </div>
+    }
+    else if (_noWords)
+    {
+        <div class="status-message">
+            @if (_currentMode == "history")
+            {
+                <span>No looked-up words found. Search for some words first! 🔍</span>
+            }
+            else
+            {
+                <span>No words found for this difficulty level. Try another difficulty! 🎯</span>
+            }
+        </div>
+        <div class="hangman-back-row">
+            <button class="btn-back-to-menu" @onclick="BackToMenu">⬅️ Back to Menu</button>
+        </div>
+    }
+    else if (_gameLost)
+    {
+        <div class="game-complete-card">
+            <div class="game-complete-emoji">😢</div>
+            <h2 class="game-complete-title">Game Over!</h2>
+            <p class="game-complete-score">The word was: <strong>@_currentWord</strong></p>
+            <p style="color:#374151;font-size:0.95rem;margin-bottom:1.25rem;">@_currentMeaning</p>
+            <div class="hangman-actions">
+                <button class="btn-play-again" @onclick="PlayAgain">🔄 Play Again</button>
+                <button class="btn-back-to-menu" @onclick="BackToMenu">🏠 Change Mode</button>
+            </div>
+        </div>
+    }
+    else if (_gameWon)
+    {
+        <div class="game-complete-card">
+            <div class="game-complete-emoji">🎉</div>
+            <h2 class="game-complete-title">You Got It!</h2>
+            <p class="game-complete-score">The word was: <strong>@_currentWord</strong></p>
+            <p class="game-complete-attempts">Wrong guesses: @_wrongGuesses / @MaxWrongGuesses</p>
+            <div class="hangman-actions">
+                <button class="btn-play-again" @onclick="PlayAgain">🔄 Play Again</button>
+                <button class="btn-back-to-menu" @onclick="BackToMenu">🏠 Change Mode</button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="hangman-game">
+
+            <!-- Hangman SVG Drawing -->
+            <div class="hangman-drawing">
+                <svg viewBox="0 0 200 220" width="200" height="220" aria-label="Hangman drawing">
+                    <!-- Gallows base -->
+                    <line x1="20" y1="210" x2="180" y2="210" stroke="#4a2c8a" stroke-width="4" stroke-linecap="round" />
+                    <!-- Vertical pole -->
+                    <line x1="60" y1="210" x2="60" y2="20" stroke="#4a2c8a" stroke-width="4" stroke-linecap="round" />
+                    <!-- Horizontal beam -->
+                    <line x1="60" y1="20" x2="135" y2="20" stroke="#4a2c8a" stroke-width="4" stroke-linecap="round" />
+                    <!-- Rope -->
+                    <line x1="135" y1="20" x2="135" y2="45" stroke="#4a2c8a" stroke-width="4" stroke-linecap="round" />
+
+                    <!-- Head (wrong guess 1) -->
+                    @if (_wrongGuesses >= 1)
+                    {
+                        <circle cx="135" cy="60" r="15" stroke="#e53e3e" stroke-width="3" fill="none" />
+                    }
+                    <!-- Body (wrong guess 2) -->
+                    @if (_wrongGuesses >= 2)
+                    {
+                        <line x1="135" y1="75" x2="135" y2="130" stroke="#e53e3e" stroke-width="3" stroke-linecap="round" />
+                    }
+                    <!-- Left arm (wrong guess 3) -->
+                    @if (_wrongGuesses >= 3)
+                    {
+                        <line x1="135" y1="92" x2="108" y2="115" stroke="#e53e3e" stroke-width="3" stroke-linecap="round" />
+                    }
+                    <!-- Right arm (wrong guess 4) -->
+                    @if (_wrongGuesses >= 4)
+                    {
+                        <line x1="135" y1="92" x2="162" y2="115" stroke="#e53e3e" stroke-width="3" stroke-linecap="round" />
+                    }
+                    <!-- Left leg (wrong guess 5) -->
+                    @if (_wrongGuesses >= 5)
+                    {
+                        <line x1="135" y1="130" x2="108" y2="165" stroke="#e53e3e" stroke-width="3" stroke-linecap="round" />
+                    }
+                    <!-- Right leg (wrong guess 6) -->
+                    @if (_wrongGuesses >= 6)
+                    {
+                        <line x1="135" y1="130" x2="162" y2="165" stroke="#e53e3e" stroke-width="3" stroke-linecap="round" />
+                    }
+                </svg>
+            </div>
+
+            <!-- Status bar -->
+            <div class="hangman-status-bar">
+                <span class="hangman-wrong">❌ Wrong: @_wrongGuesses / @MaxWrongGuesses</span>
+                <span class="hangman-remaining">💛 @(MaxWrongGuesses - _wrongGuesses) left</span>
+            </div>
+
+            <!-- Hint toggle -->
+            @if (!string.IsNullOrEmpty(_currentMeaning))
+            {
+                <div class="hangman-hint">
+                    @if (_showHint)
+                    {
+                        <div class="hangman-hint-text">💡 @_currentMeaning</div>
+                        <button class="btn-hint" @onclick="() => _showHint = false">Hide hint</button>
+                    }
+                    else
+                    {
+                        <button class="btn-hint" @onclick="() => _showHint = true">💡 Show hint</button>
+                    }
+                </div>
+            }
+
+            <!-- Word display -->
+            <div class="hangman-word-display">
+                @foreach (var ch in _currentWord)
+                {
+                    @if (ch == ' ')
+                    {
+                        <span class="hangman-letter-space"></span>
+                    }
+                    else if (!char.IsLetter(ch))
+                    {
+                        <span class="hangman-letter-slot revealed">@ch</span>
+                    }
+                    else
+                    {
+                        <span class="hangman-letter-slot @(_guessedLetters.Contains(char.ToLower(ch)) ? "revealed" : "")">
+                            @(_guessedLetters.Contains(char.ToLower(ch)) ? ch.ToString().ToUpper() : "")
+                        </span>
+                    }
+                }
+            </div>
+
+            <!-- Letter keyboard -->
+            <div class="hangman-keyboard">
+                @foreach (var letter in "abcdefghijklmnopqrstuvwxyz")
+                {
+                    var ch = letter;
+                    var isGuessed = _guessedLetters.Contains(ch);
+                    var isCorrect = isGuessed && _currentWord.ToLower().Contains(ch);
+                    var isWrong = isGuessed && !_currentWord.ToLower().Contains(ch);
+                    <button class="hangman-key @(isCorrect ? "key-correct" : "") @(isWrong ? "key-wrong" : "")"
+                            disabled="@isGuessed"
+                            @onclick="() => GuessLetter(ch)">
+                        @ch.ToString().ToUpper()
+                    </button>
+                }
+            </div>
+
+            <div class="hangman-back-row">
+                <button class="btn-back-to-menu" @onclick="BackToMenu">🏠 Change Mode</button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    // 6 wrong guesses correspond to the 6 body parts drawn on the SVG:
+    // head, body, left arm, right arm, left leg, right leg
+    private const int MaxWrongGuesses = 6;
+
+    private const int EasyMinLevel = 1;
+    private const int EasyMaxLevel = 2;
+    private const int MediumMinLevel = 3;
+    private const int MediumMaxLevel = 4;
+    private const int HardMinLevel = 5;
+    private const int MinWordLetters = 3;
+
+    private bool _selectingMode = true;
+    private bool _loading = false;
+    private bool _noWords = false;
+    private bool _gameWon = false;
+    private bool _gameLost = false;
+    private bool _showHint = false;
+
+    private string _currentWord = string.Empty;
+    private string _currentMeaning = string.Empty;
+    private HashSet<char> _guessedLetters = new();
+    private int _wrongGuesses = 0;
+
+    private List<Word> _wordPool = new();
+    private string _currentMode = string.Empty;
+
+    private static bool IsValidGameWord(Word? word) =>
+        word != null &&
+        !string.IsNullOrWhiteSpace(word.WordText) &&
+        word.WordText.All(c => char.IsLetter(c) || c == ' ' || c == '-') &&
+        word.WordText.Count(char.IsLetter) >= MinWordLetters;
+
+    private async Task StartFromHistory()
+    {
+        _currentMode = "history";
+        _loading = true;
+        _selectingMode = false;
+        _noWords = false;
+        StateHasChanged();
+
+        var history = await HistoryService.GetHistoryAsync();
+        var wordTasks = history.Select(h => WordRepository.GetWordAsync(h.WordText));
+        var wordResults = await Task.WhenAll(wordTasks);
+
+        _wordPool = wordResults
+            .Where(w => IsValidGameWord(w))
+            .Select(w => w!)
+            .ToList();
+
+        _loading = false;
+
+        if (_wordPool.Count == 0)
+        {
+            _noWords = true;
+            return;
+        }
+
+        StartNewRound();
+    }
+
+    private async Task StartFromDifficulty(string difficulty)
+    {
+        _currentMode = difficulty;
+        _loading = true;
+        _selectingMode = false;
+        _noWords = false;
+        StateHasChanged();
+
+        var allWords = await WordRepository.GetAllWordsAsync();
+
+        var filteredByDifficulty = difficulty switch
+        {
+            "easy" => allWords.Where(w => w.DifficultyLevel >= EasyMinLevel && w.DifficultyLevel <= EasyMaxLevel),
+            "medium" => allWords.Where(w => w.DifficultyLevel >= MediumMinLevel && w.DifficultyLevel <= MediumMaxLevel),
+            "hard" => allWords.Where(w => w.DifficultyLevel >= HardMinLevel),
+            _ => allWords.AsEnumerable()
+        };
+
+        _wordPool = filteredByDifficulty.Where(w => IsValidGameWord(w)).ToList();
+
+        _loading = false;
+
+        if (_wordPool.Count == 0)
+        {
+            _noWords = true;
+            return;
+        }
+
+        StartNewRound();
+    }
+
+    private void StartNewRound()
+    {
+        var word = _wordPool[Random.Shared.Next(_wordPool.Count)];
+        _currentWord = word.WordText.Trim();
+        _currentMeaning = word.Meaning ?? string.Empty;
+        _guessedLetters = new HashSet<char>();
+        _wrongGuesses = 0;
+        _gameWon = false;
+        _gameLost = false;
+        _showHint = false;
+    }
+
+    private void GuessLetter(char letter)
+    {
+        if (_gameWon || _gameLost) return;
+        if (_guessedLetters.Contains(letter)) return;
+
+        _guessedLetters.Add(letter);
+
+        if (!_currentWord.ToLower().Contains(letter))
+        {
+            _wrongGuesses++;
+            if (_wrongGuesses >= MaxWrongGuesses)
+                _gameLost = true;
+        }
+        else
+        {
+            // Win check: all alphabetical letters in the word must be guessed
+            var alphaLetters = _currentWord.ToLower().Where(char.IsLetter).Distinct();
+            if (alphaLetters.All(c => _guessedLetters.Contains(c)))
+                _gameWon = true;
+        }
+    }
+
+    private void PlayAgain()
+    {
+        if (_wordPool.Count > 0)
+            StartNewRound();
+    }
+
+    private void BackToMenu()
+    {
+        _selectingMode = true;
+        _loading = false;
+        _noWords = false;
+        _gameWon = false;
+        _gameLost = false;
+        _wordPool.Clear();
+        _currentWord = string.Empty;
+        _currentMeaning = string.Empty;
+        _guessedLetters.Clear();
+        _wrongGuesses = 0;
+        _showHint = false;
+        _currentMode = string.Empty;
+    }
+}

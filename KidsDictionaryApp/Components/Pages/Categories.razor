@@ -66,6 +66,8 @@
 </ProfileGuard>
 
 @code {
+    private List<Word>? _words;
+    private Dictionary<string, List<Word>> _categories = new();
     private HashSet<string> _expandedCategories = new();
     private Word? _selectedWord;
 

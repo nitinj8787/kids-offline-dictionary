@@ -1057,6 +1057,108 @@ body {
 }
 
 
+/* ===== Word Scramble Game Styles ===== */
+
+.scramble-game {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.scramble-label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-align: center;
+}
+
+.scramble-word-display {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+}
+
+.scramble-letter-tile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.6rem;
+    height: 2.8rem;
+    background: #f5f0ff;
+    border: 2px solid #c4b5fd;
+    border-radius: 0.6rem;
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: #4a2c8a;
+    letter-spacing: 0;
+}
+
+.scramble-input-row {
+    display: flex;
+    gap: 0.6rem;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    max-width: 420px;
+}
+
+.scramble-input {
+    flex: 1;
+    padding: 0.65rem 1rem;
+    border: 2px solid #c4b5fd;
+    border-radius: 0.75rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #4a2c8a;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    text-transform: lowercase;
+}
+
+.scramble-input:focus {
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 3px #c4b5fd55;
+}
+
+.scramble-submit-btn {
+    padding: 0.65rem 1.25rem;
+    background: #7c3aed;
+    color: white;
+    border: none;
+    border-radius: 0.75rem;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+
+.scramble-submit-btn:hover:not(:disabled) {
+    background: #5b21b6;
+}
+
+.scramble-submit-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.scramble-feedback {
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-radius: 0.6rem;
+    padding: 0.45rem 1rem;
+    text-align: center;
+}
+
+.scramble-feedback-wrong {
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fca5a5;
+}
+
 /* ========== Profile Pages ========== */
 
 .profile-grid {

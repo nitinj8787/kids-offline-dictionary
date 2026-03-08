@@ -579,6 +579,39 @@ body {
     margin: 0.5rem 0 0.75rem;
 }
 
+/* ===== History Date Group Styles ===== */
+
+.history-date-group {
+    margin-bottom: 1.25rem;
+}
+
+.history-date-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f5f0ff;
+    border-radius: 0.5rem;
+    padding: 0.35rem 0.75rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #7c3aed;
+}
+
+.history-date-count {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #9ca3af;
+}
+
+/* Today's words badge on Home page */
+.today-words-badge {
+    font-size: 0.9rem;
+    color: #6b7280;
+    margin: 0.5rem 0 0.75rem;
+    text-align: center;
+}
+
 /* ===== Match Game Styles ===== */
 
 .game-info-bar {

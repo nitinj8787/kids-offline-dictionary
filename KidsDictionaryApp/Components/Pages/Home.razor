@@ -1,6 +1,8 @@
 ﻿@page "/"
 @using KidsDictionaryApp.ViewModels
+@using KidsDictionaryApp.Services.Interfaces
 @inject DictionaryViewModel ViewModel
+@inject IWordHistoryService HistoryService
 @implements IDisposable
 
 <ProfileGuard>
@@ -9,6 +11,11 @@
         <h1 class="app-title">📖 Kids Dictionary</h1>
         <p class="app-subtitle">Type a word to learn what it means!</p>
 
+        @if (_todayCount > 0)
+        {
+            <p class="today-words-badge">🌟 You've looked up <strong>@_todayCount</strong> word@(_todayCount == 1 ? "" : "s") today!</p>
+        }
+
         <div class="search-bar">
             <input class="search-input"
                    type="text"
@@ -16,7 +23,7 @@
                    @bind="ViewModel.SearchText"
                    @bind:event="oninput"
                    @onkeyup="OnKeyUp" />
-            <button class="btn-search" @onclick="ViewModel.SearchAsync"
+            <button class="btn-search" @onclick="SearchAndRefreshCount"
                     disabled="@ViewModel.IsLoading">
                 🔍 Search
             </button>
@@ -51,8 +58,11 @@
 </ProfileGuard>
 
 @code {
-    protected override void OnInitialized()
+    private int _todayCount;
+
+    protected override async Task OnInitializedAsync()
     {
+        _todayCount = await HistoryService.GetTodayCountAsync();
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
     }
 
@@ -65,14 +75,20 @@
     {
         if (e.Key == "Enter")
         {
-            await ViewModel.SearchAsync();
+            await SearchAndRefreshCount();
         }
+    }
+
+    private async Task SearchAndRefreshCount()
+    {
+        await ViewModel.SearchAsync();
+        _todayCount = await HistoryService.GetTodayCountAsync();
     }
 
     private async Task SearchSynonym(string word)
     {
         ViewModel.SearchText = word;
-        await ViewModel.SearchAsync();
+        await SearchAndRefreshCount();
     }
 
     public void Dispose()

@@ -53,7 +53,8 @@ main {
 
     .sidebar {
         width: 250px;
-        height: 100vh;
+        height: 100vh; /* fallback for browsers that don't support env() */
+        height: calc(100vh - env(safe-area-inset-top));
         position: sticky;
         top: 0;
     }

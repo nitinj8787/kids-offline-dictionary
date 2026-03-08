@@ -7,6 +7,7 @@
 @inject IProgressService ProgressService
 @inject IAchievementService AchievementService
 
+<ProfileGuard>
 <div class="dictionary-page">
     <h1 class="app-title">🔀 Word Scramble</h1>
     <p class="app-subtitle">Unscramble the letters to find the word!</p>
@@ -156,6 +157,7 @@
         </div>
     }
 </div>
+</ProfileGuard>
 
 @code {
     private const int MaxWrongGuesses = 3;

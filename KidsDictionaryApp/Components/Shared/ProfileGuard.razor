@@ -1,0 +1,99 @@
+@using KidsDictionaryApp.Models
+@using KidsDictionaryApp.Services.Interfaces
+@inject IProfileService ProfileService
+@inject NavigationManager Navigation
+@implements IDisposable
+
+@if (_loading)
+{
+    <div class="loading-section">
+        <div class="loading-spinner">⏳ Loading...</div>
+    </div>
+}
+else if (ProfileService.ActiveProfile == null)
+{
+    <div class="dictionary-page">
+        @if (_profiles.Count == 0)
+        {
+            <div class="profile-guard-box">
+                <div class="profile-guard-emoji">👤</div>
+                <h2 class="profile-guard-title">No Profile Yet!</h2>
+                <p class="profile-guard-text">
+                    You need a profile to use this feature. Create one to track your progress and earn badges!
+                </p>
+                <a href="profiles" class="btn-search">➕ Create Profile</a>
+            </div>
+        }
+        else
+        {
+            <div class="profile-guard-box">
+                <div class="profile-guard-emoji">👤</div>
+                <h2 class="profile-guard-title">Choose Your Profile</h2>
+                <p class="profile-guard-text">Select a profile to continue.</p>
+                <div class="profile-grid">
+                    @foreach (var profile in _profiles)
+                    {
+                        <div class="profile-card" @onclick="() => SelectProfile(profile)">
+                            <div class="profile-avatar">@profile.AvatarEmoji</div>
+                            <div class="profile-name">@profile.Name</div>
+                            <div class="profile-score">⭐ @profile.TotalScore pts</div>
+                        </div>
+                    }
+                </div>
+                <p class="profile-guard-manage-link">
+                    <a href="profiles">Manage profiles →</a>
+                </p>
+            </div>
+        }
+    </div>
+}
+else
+{
+    @ChildContent
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool _loading = true;
+    private List<UserProfile> _profiles = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        ProfileService.ActiveProfileChanged += OnProfileChanged;
+        await ProfileService.InitializeAsync();
+
+        if (ProfileService.ActiveProfile == null)
+        {
+            _profiles = await ProfileService.GetProfilesAsync();
+        }
+
+        _loading = false;
+    }
+
+    private async void OnProfileChanged()
+    {
+        try
+        {
+            if (ProfileService.ActiveProfile == null)
+            {
+                _profiles = await ProfileService.GetProfilesAsync();
+            }
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception)
+        {
+            // Non-critical: component may have been disposed before the callback fires
+        }
+    }
+
+    private void SelectProfile(UserProfile profile)
+    {
+        ProfileService.SetActiveProfile(profile);
+    }
+
+    public void Dispose()
+    {
+        ProfileService.ActiveProfileChanged -= OnProfileChanged;
+    }
+}

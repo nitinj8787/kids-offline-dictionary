@@ -4,6 +4,7 @@
 @inject IWordHistoryService HistoryService
 @inject IWordRepository WordRepository
 
+<ProfileGuard>
 <div class="dictionary-page">
     <h1 class="app-title">🕐 Word History</h1>
     <p class="app-subtitle">Words you've looked up recently</p>
@@ -44,6 +45,7 @@
         </div>
     }
 </div>
+</ProfileGuard>
 
 @code {
     private List<WordHistory>? _history;

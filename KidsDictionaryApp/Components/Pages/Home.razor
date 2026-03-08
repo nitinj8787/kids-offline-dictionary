@@ -3,6 +3,7 @@
 @inject DictionaryViewModel ViewModel
 @implements IDisposable
 
+<ProfileGuard>
 <div class="dictionary-page">
     <div class="search-section">
         <h1 class="app-title">📖 Kids Dictionary</h1>
@@ -47,6 +48,7 @@
                         OnSynonymClick="SearchSynonym" />
     }
 </div>
+</ProfileGuard>
 
 @code {
     protected override void OnInitialized()
@@ -78,3 +80,4 @@
         ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
     }
 }
+

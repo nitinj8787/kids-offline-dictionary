@@ -20,6 +20,12 @@ namespace KidsDictionaryApp.Services.Interfaces
         /// </summary>
         void SetActiveProfile(UserProfile? profile);
 
+        /// <summary>
+        /// Initialises the service: if exactly one profile exists it is automatically
+        /// set as the active profile. Safe to call multiple times; only executes once.
+        /// </summary>
+        Task InitializeAsync();
+
         event Action? ActiveProfileChanged;
     }
 }

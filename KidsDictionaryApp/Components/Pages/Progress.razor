@@ -7,19 +7,13 @@
 @inject NavigationManager Navigation
 @implements IDisposable
 
+<ProfileGuard>
 <div class="dictionary-page">
     <h1 class="app-title">📊 Progress</h1>
 
-    @if (ProfileService.ActiveProfile == null)
-    {
-        <p class="app-subtitle">No profile selected.</p>
-        <div class="status-message">
-            Please <a href="profiles">select a profile</a> to view progress.
-        </div>
+    @{
+        var profile = ProfileService.ActiveProfile!;
     }
-    else
-    {
-        var profile = ProfileService.ActiveProfile;
 
         <p class="app-subtitle">Progress for <strong>@profile.AvatarEmoji @profile.Name</strong></p>
 
@@ -111,8 +105,8 @@
                 </div>
             }
         </div>
-    }
 </div>
+</ProfileGuard>
 
 @code {
     private int _uniqueWordCount;

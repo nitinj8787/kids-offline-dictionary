@@ -7,6 +7,7 @@
 @inject IProgressService ProgressService
 @inject IAchievementService AchievementService
 
+<ProfileGuard>
 <div class="dictionary-page">
     <h1 class="app-title">🎯 Hangman</h1>
     <p class="app-subtitle">Guess the word letter by letter!</p>
@@ -208,9 +209,9 @@
         </div>
     }
 </div>
+</ProfileGuard>
 
 @code {
-    // 6 wrong guesses correspond to the 6 body parts drawn on the SVG:
     // head, body, left arm, right arm, left leg, right leg
     private const int MaxWrongGuesses = 6;
 

@@ -5,19 +5,13 @@
 @inject IAchievementService AchievementService
 @implements IDisposable
 
+<ProfileGuard>
 <div class="dictionary-page">
     <h1 class="app-title">🏅 Achievements</h1>
 
-    @if (ProfileService.ActiveProfile == null)
-    {
-        <p class="app-subtitle">No profile selected.</p>
-        <div class="status-message">
-            Please <a href="profiles">select a profile</a> to view achievements.
-        </div>
+    @{
+        var profile = ProfileService.ActiveProfile!;
     }
-    else
-    {
-        var profile = ProfileService.ActiveProfile;
 
         <p class="app-subtitle">
             Badges for <strong>@profile.AvatarEmoji @profile.Name</strong> —
@@ -61,8 +55,8 @@
                 </div>
             }
         }
-    }
 </div>
+</ProfileGuard>
 
 @code {
     private List<Achievement> _allAchievements = new();

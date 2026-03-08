@@ -7,6 +7,7 @@
 @inject IProgressService ProgressService
 @inject IAchievementService AchievementService
 
+<ProfileGuard>
 <div class="dictionary-page">
     <h1 class="app-title">🎮 Match the Word</h1>
     <p class="app-subtitle">Match each word with its meaning!</p>
@@ -88,9 +89,9 @@
         </div>
     }
 </div>
+</ProfileGuard>
 
 @code {
-    private record MatchItem(int PairId, string Text)
     {
         public bool IsMatched { get; set; }
         public bool IsWrong { get; set; }

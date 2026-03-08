@@ -8,6 +8,7 @@ namespace KidsDictionaryApp.Services.Implementations
     public class ProfileService : IProfileService
     {
         private readonly SQLiteAsyncConnection _db;
+        private int _initializationFlag = 0; // 0 = not yet started, 1 = started
 
         public UserProfile? ActiveProfile { get; private set; }
 
@@ -42,6 +43,18 @@ namespace KidsDictionaryApp.Services.Implementations
                 TotalScore = 0
             };
             await _db.InsertAsync(profile);
+
+            // Auto-set as active when this is the very first profile
+            if (ActiveProfile == null)
+            {
+                var count = await _db.Table<UserProfile>().CountAsync();
+                if (count == 1)
+                {
+                    ActiveProfile = profile;
+                    ActiveProfileChanged?.Invoke();
+                }
+            }
+
             return profile;
         }
 
@@ -69,8 +82,16 @@ namespace KidsDictionaryApp.Services.Implementations
                 if (ActiveProfile?.Id == id)
                 {
                     ActiveProfile = null;
-                    ActiveProfileChanged?.Invoke();
                 }
+
+                // Auto-select if exactly one profile remains and none is currently active
+                var remaining = await GetProfilesAsync();
+                if (remaining.Count == 1 && ActiveProfile == null)
+                {
+                    ActiveProfile = remaining[0];
+                }
+
+                ActiveProfileChanged?.Invoke();
             }
         }
 
@@ -78,6 +99,24 @@ namespace KidsDictionaryApp.Services.Implementations
         {
             ActiveProfile = profile;
             ActiveProfileChanged?.Invoke();
+        }
+
+        /// <inheritdoc />
+        public async Task InitializeAsync()
+        {
+            // Use an atomic compare-and-swap so that only the first caller runs the body,
+            // even if multiple components initialise concurrently.
+            if (Interlocked.CompareExchange(ref _initializationFlag, 1, 0) != 0) return;
+
+            if (ActiveProfile == null)
+            {
+                var profiles = await GetProfilesAsync();
+                if (profiles.Count == 1)
+                {
+                    ActiveProfile = profiles[0];
+                    ActiveProfileChanged?.Invoke();
+                }
+            }
         }
     }
 }

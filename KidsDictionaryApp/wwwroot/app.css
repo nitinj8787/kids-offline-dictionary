@@ -1525,3 +1525,48 @@ body {
     font-size: 0.72rem;
     color: #9ca3af;
 }
+
+/* ========== Profile Guard ========== */
+
+.profile-guard-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    background: white;
+    border: 2px solid #e9d5ff;
+    border-radius: 1.25rem;
+    padding: 2.5rem 2rem;
+    max-width: 600px;
+    margin: 2rem auto;
+}
+
+.profile-guard-emoji {
+    font-size: 3.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.profile-guard-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #4a2c8a;
+    margin-bottom: 0.5rem;
+}
+
+.profile-guard-text {
+    font-size: 1rem;
+    color: #6b7280;
+    margin-bottom: 1.5rem;
+    max-width: 380px;
+}
+
+.profile-guard-manage-link {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: #7c3aed;
+}
+
+.profile-guard-manage-link a {
+    color: #7c3aed;
+    text-decoration: underline;
+}

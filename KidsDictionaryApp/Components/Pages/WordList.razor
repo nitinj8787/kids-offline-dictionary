@@ -4,6 +4,7 @@
 @inject IWordRepository WordRepository
 @inject IWordHistoryService HistoryService
 
+<ProfileGuard>
 <div class="dictionary-page">
     <h1 class="app-title">📚 Word List</h1>
     <p class="app-subtitle">All words available in the dictionary</p>
@@ -75,6 +76,7 @@
         }
     }
 </div>
+</ProfileGuard>
 
 @code {
     private List<Word>? _words;

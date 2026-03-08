@@ -4,6 +4,7 @@
 @inject IWordRepository WordRepository
 @inject IWordHistoryService HistoryService
 
+<ProfileGuard>
 <div class="dictionary-page">
     <h1 class="app-title">🏷️ Categories</h1>
     <p class="app-subtitle">Browse words by category</p>
@@ -62,10 +63,9 @@
         </div>
     }
 </div>
+</ProfileGuard>
 
 @code {
-    private List<Word>? _words;
-    private Dictionary<string, List<Word>> _categories = new();
     private HashSet<string> _expandedCategories = new();
     private Word? _selectedWord;
 

@@ -1,0 +1,364 @@
+@page "/word-scramble"
+@using KidsDictionaryApp.Models
+@using KidsDictionaryApp.Services.Interfaces
+@inject IWordHistoryService HistoryService
+@inject IWordRepository WordRepository
+@inject IProfileService ProfileService
+@inject IProgressService ProgressService
+@inject IAchievementService AchievementService
+
+<div class="dictionary-page">
+    <h1 class="app-title">🔀 Word Scramble</h1>
+    <p class="app-subtitle">Unscramble the letters to find the word!</p>
+
+    @if (_selectingMode)
+    {
+        <div class="hangman-mode-selection">
+            <div class="hangman-mode-card" @onclick="StartFromHistory">
+                <div class="hangman-mode-icon">📚</div>
+                <h2 class="hangman-mode-title">From My History</h2>
+                <p class="hangman-mode-desc">Unscramble words you've recently looked up</p>
+                <button class="btn-mode-history">Play ▶</button>
+            </div>
+
+            <div class="hangman-mode-divider">— or choose a difficulty —</div>
+
+            <div class="hangman-difficulty-row">
+                <button class="btn-difficulty easy" @onclick='() => StartFromDifficulty("easy")'>
+                    🟢<br />Easy
+                </button>
+                <button class="btn-difficulty medium" @onclick='() => StartFromDifficulty("medium")'>
+                    🟡<br />Medium
+                </button>
+                <button class="btn-difficulty hard" @onclick='() => StartFromDifficulty("hard")'>
+                    🔴<br />Hard
+                </button>
+            </div>
+        </div>
+    }
+    else if (_loading)
+    {
+        <div class="loading-section">
+            <div class="loading-spinner">⏳ Loading game...</div>
+        </div>
+    }
+    else if (_noWords)
+    {
+        <div class="status-message">
+            @if (_currentMode == "history")
+            {
+                <span>No looked-up words found. Search for some words first! 🔍</span>
+            }
+            else
+            {
+                <span>No words found for this difficulty level. Try another difficulty! 🎯</span>
+            }
+        </div>
+        <div class="hangman-back-row">
+            <button class="btn-back-to-menu" @onclick="BackToMenu">⬅️ Back to Menu</button>
+        </div>
+    }
+    else if (_gameLost)
+    {
+        <div class="game-complete-card">
+            <div class="game-complete-emoji">😢</div>
+            <h2 class="game-complete-title">Game Over!</h2>
+            <p class="game-complete-score">The word was: <strong>@_currentWord</strong></p>
+            <p style="color:#374151;font-size:0.95rem;margin-bottom:1.25rem;">@_currentMeaning</p>
+            <div class="hangman-actions">
+                <button class="btn-play-again" @onclick="PlayAgain">🔄 Play Again</button>
+                <button class="btn-back-to-menu" @onclick="BackToMenu">🏠 Change Mode</button>
+            </div>
+        </div>
+    }
+    else if (_gameWon)
+    {
+        <div class="game-complete-card">
+            <div class="game-complete-emoji">🎉</div>
+            <h2 class="game-complete-title">You Got It!</h2>
+            <p class="game-complete-score">The word was: <strong>@_currentWord</strong></p>
+            <p class="game-complete-attempts">Attempts used: @_wrongGuesses / @MaxWrongGuesses</p>
+            @if (_newAchievements.Count > 0)
+            {
+                <div class="achievement-toast">
+                    🏅 New badge@(_newAchievements.Count > 1 ? "s" : "") earned!
+                    @foreach (var a in _newAchievements)
+                    {
+                        <span class="toast-badge">@a.BadgeEmoji @a.Name</span>
+                    }
+                </div>
+            }
+            <div class="hangman-actions">
+                <button class="btn-play-again" @onclick="PlayAgain">🔄 Play Again</button>
+                <button class="btn-back-to-menu" @onclick="BackToMenu">🏠 Change Mode</button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="scramble-game">
+
+            <!-- Status bar -->
+            <div class="hangman-status-bar">
+                <span class="hangman-wrong">❌ Wrong: @_wrongGuesses / @MaxWrongGuesses</span>
+                <span class="hangman-remaining">💛 @(MaxWrongGuesses - _wrongGuesses) left</span>
+            </div>
+
+            <!-- Hint toggle -->
+            @if (!string.IsNullOrEmpty(_currentMeaning))
+            {
+                <div class="hangman-hint">
+                    @if (_showHint)
+                    {
+                        <div class="hangman-hint-text">💡 @_currentMeaning</div>
+                        <button class="btn-hint" @onclick="() => _showHint = false">Hide hint</button>
+                    }
+                    else
+                    {
+                        <button class="btn-hint" @onclick="() => _showHint = true">💡 Show hint</button>
+                    }
+                </div>
+            }
+
+            <!-- Scrambled word display -->
+            <div class="scramble-label">Scrambled word:</div>
+            <div class="scramble-word-display">
+                @foreach (var ch in _scrambledWord)
+                {
+                    <span class="scramble-letter-tile">@ch.ToString().ToUpper()</span>
+                }
+            </div>
+
+            <!-- Wrong answer feedback -->
+            @if (_showWrongFeedback)
+            {
+                <div class="scramble-feedback scramble-feedback-wrong">❌ Not quite! Try again.</div>
+            }
+
+            <!-- Answer input -->
+            <div class="scramble-input-row">
+                <input class="scramble-input"
+                       type="text"
+                       placeholder="Type your answer…"
+                       @bind="_userAnswer"
+                       @bind:event="oninput"
+                       @onkeyup="OnAnswerKeyUp"
+                       maxlength="@_currentWord.Length"
+                       disabled="@(_gameWon || _gameLost)" />
+                <button class="scramble-submit-btn" @onclick="SubmitAnswer" disabled="@(string.IsNullOrWhiteSpace(_userAnswer) || _gameWon || _gameLost)">
+                    ✔ Check
+                </button>
+            </div>
+
+            <div class="hangman-back-row">
+                <button class="btn-back-to-menu" @onclick="BackToMenu">🏠 Change Mode</button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private const int MaxWrongGuesses = 3;
+
+    private const int EasyMinLevel = 1;
+    private const int EasyMaxLevel = 2;
+    private const int MediumMinLevel = 3;
+    private const int MediumMaxLevel = 4;
+    private const int HardMinLevel = 5;
+    private const int MinWordLetters = 4;
+
+    private bool _selectingMode = true;
+    private bool _loading = false;
+    private bool _noWords = false;
+    private bool _gameWon = false;
+    private bool _gameLost = false;
+    private bool _showHint = false;
+    private bool _showWrongFeedback = false;
+
+    private string _currentWord = string.Empty;
+    private string _scrambledWord = string.Empty;
+    private string _currentMeaning = string.Empty;
+    private string _userAnswer = string.Empty;
+    private int _wrongGuesses = 0;
+
+    private List<Word> _wordPool = new();
+    private string _currentMode = string.Empty;
+    private List<Achievement> _newAchievements = new();
+
+    private static bool IsValidGameWord(Word? word) =>
+        word != null &&
+        !string.IsNullOrWhiteSpace(word.WordText) &&
+        word.WordText.All(char.IsLetter) &&
+        word.WordText.Length >= MinWordLetters;
+
+    private static string Scramble(string word)
+    {
+        var letters = word.ToLower().ToCharArray();
+        // Words that consist of a single repeated letter (e.g. "aaaa") cannot be
+        // scrambled into a different arrangement; in that case we return the original
+        // unchanged – the validator already ensures words are at least 4 letters long
+        // so reaching a player with an unscrambled word is an extremely rare edge case.
+        for (var attempt = 0; attempt < 20; attempt++)
+        {
+            for (var i = letters.Length - 1; i > 0; i--)
+            {
+                var j = Random.Shared.Next(i + 1);
+                (letters[i], letters[j]) = (letters[j], letters[i]);
+            }
+            if (new string(letters) != word.ToLower())
+                break;
+        }
+        return new string(letters);
+    }
+
+    private async Task StartFromHistory()
+    {
+        _currentMode = "history";
+        _loading = true;
+        _selectingMode = false;
+        _noWords = false;
+        StateHasChanged();
+
+        var history = await HistoryService.GetHistoryAsync();
+        var wordTasks = history.Select(h => WordRepository.GetWordAsync(h.WordText));
+        var wordResults = await Task.WhenAll(wordTasks);
+
+        _wordPool = wordResults
+            .Where(w => IsValidGameWord(w))
+            .Select(w => w!)
+            .ToList();
+
+        _loading = false;
+
+        if (_wordPool.Count == 0)
+        {
+            _noWords = true;
+            return;
+        }
+
+        StartNewRound();
+    }
+
+    private async Task StartFromDifficulty(string difficulty)
+    {
+        _currentMode = difficulty;
+        _loading = true;
+        _selectingMode = false;
+        _noWords = false;
+        StateHasChanged();
+
+        var allWords = await WordRepository.GetAllWordsAsync();
+
+        var filteredByDifficulty = difficulty switch
+        {
+            "easy" => allWords.Where(w => w.DifficultyLevel >= EasyMinLevel && w.DifficultyLevel <= EasyMaxLevel),
+            "medium" => allWords.Where(w => w.DifficultyLevel >= MediumMinLevel && w.DifficultyLevel <= MediumMaxLevel),
+            "hard" => allWords.Where(w => w.DifficultyLevel >= HardMinLevel),
+            _ => allWords.AsEnumerable()
+        };
+
+        _wordPool = filteredByDifficulty.Where(w => IsValidGameWord(w)).ToList();
+
+        _loading = false;
+
+        if (_wordPool.Count == 0)
+        {
+            _noWords = true;
+            return;
+        }
+
+        StartNewRound();
+    }
+
+    private void StartNewRound()
+    {
+        var word = _wordPool[Random.Shared.Next(_wordPool.Count)];
+        _currentWord = word.WordText.Trim().ToLower();
+        _scrambledWord = Scramble(_currentWord);
+        _currentMeaning = word.Meaning ?? string.Empty;
+        _userAnswer = string.Empty;
+        _wrongGuesses = 0;
+        _gameWon = false;
+        _gameLost = false;
+        _showHint = false;
+        _showWrongFeedback = false;
+    }
+
+    private async Task OnAnswerKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await SubmitAnswer();
+    }
+
+    private async Task SubmitAnswer()
+    {
+        if (string.IsNullOrWhiteSpace(_userAnswer) || _gameWon || _gameLost)
+            return;
+
+        _showWrongFeedback = false;
+
+        if (_userAnswer.Trim().ToLower() == _currentWord)
+        {
+            _gameWon = true;
+            _ = RecordWinAsync();
+        }
+        else
+        {
+            _wrongGuesses++;
+            _userAnswer = string.Empty;
+            if (_wrongGuesses >= MaxWrongGuesses)
+                _gameLost = true;
+            else
+                _showWrongFeedback = true;
+        }
+    }
+
+    private async Task RecordWinAsync()
+    {
+        if (ProfileService.ActiveProfile == null)
+            return;
+
+        try
+        {
+            await ProgressService.RecordGameScoreAsync(
+                ProfileService.ActiveProfile.Id,
+                "WordScramble",
+                (MaxWrongGuesses - _wrongGuesses) * 15,
+                _wrongGuesses + 1,  // total attempts = wrong guesses + the final correct attempt
+                completed: true);
+            _newAchievements = await AchievementService.CheckAndAwardAchievementsAsync(
+                ProfileService.ActiveProfile.Id);
+        }
+        catch (Exception)
+        {
+            // Non-critical: progress recording failure should not interrupt gameplay
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void PlayAgain()
+    {
+        _newAchievements = new List<Achievement>();
+        if (_wordPool.Count > 0)
+            StartNewRound();
+    }
+
+    private void BackToMenu()
+    {
+        _selectingMode = true;
+        _loading = false;
+        _noWords = false;
+        _gameWon = false;
+        _gameLost = false;
+        _wordPool.Clear();
+        _currentWord = string.Empty;
+        _scrambledWord = string.Empty;
+        _currentMeaning = string.Empty;
+        _userAnswer = string.Empty;
+        _wrongGuesses = 0;
+        _showHint = false;
+        _showWrongFeedback = false;
+        _currentMode = string.Empty;
+    }
+}

@@ -1,0 +1,146 @@
+@page "/profiles"
+@using KidsDictionaryApp.Models
+@using KidsDictionaryApp.Services.Interfaces
+@inject IProfileService ProfileService
+@inject IAchievementService AchievementService
+@inject NavigationManager Navigation
+
+<div class="dictionary-page">
+    <h1 class="app-title">👤 Profiles</h1>
+    <p class="app-subtitle">Choose a profile to track your progress and earn badges!</p>
+
+    @if (_loading)
+    {
+        <div class="loading-section">
+            <div class="loading-spinner">⏳ Loading profiles...</div>
+        </div>
+    }
+    else
+    {
+        @if (_profiles.Count == 0)
+        {
+            <div class="status-message">No profiles yet. Create your first profile below! 🌟</div>
+        }
+        else
+        {
+            <div class="profile-grid">
+                @foreach (var profile in _profiles)
+                {
+                    <div class="profile-card @(ProfileService.ActiveProfile?.Id == profile.Id ? "profile-card-active" : "")"
+                         @onclick="() => SelectProfile(profile)">
+                        <div class="profile-avatar">@profile.AvatarEmoji</div>
+                        <div class="profile-name">@profile.Name</div>
+                        <div class="profile-score">⭐ @profile.TotalScore pts</div>
+                        @if (ProfileService.ActiveProfile?.Id == profile.Id)
+                        {
+                            <div class="profile-active-badge">✅ Active</div>
+                        }
+                        <div class="profile-actions">
+                            <button class="btn-profile-action btn-delete"
+                                    @onclick:stopPropagation="true"
+                                    @onclick="() => ConfirmDelete(profile)"
+                                    title="Delete profile">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="create-profile-section">
+            <h2 class="section-title">➕ Create New Profile</h2>
+            <div class="create-profile-form">
+                <input class="search-input"
+                       type="text"
+                       placeholder="Enter name..."
+                       @bind="_newProfileName"
+                       maxlength="30" />
+                <div class="avatar-picker">
+                    @foreach (var emoji in _avatarOptions)
+                    {
+                        <button class="avatar-option @(_selectedAvatar == emoji ? "avatar-selected" : "")"
+                                @onclick="() => _selectedAvatar = emoji">
+                            @emoji
+                        </button>
+                    }
+                </div>
+                <button class="btn-search" @onclick="CreateProfile"
+                        disabled="@(string.IsNullOrWhiteSpace(_newProfileName))">
+                    Create Profile
+                </button>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_message))
+        {
+            <div class="status-message">@_message</div>
+        }
+    }
+
+    @if (_profileToDelete != null)
+    {
+        <div class="modal-overlay">
+            <div class="modal-card">
+                <p>Delete profile <strong>@_profileToDelete.Name</strong>? This cannot be undone.</p>
+                <div class="modal-actions">
+                    <button class="btn-search" @onclick="DeleteProfile">Delete</button>
+                    <button class="btn-cancel" @onclick="() => _profileToDelete = null">Cancel</button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<UserProfile> _profiles = new();
+    private bool _loading = true;
+    private string _newProfileName = string.Empty;
+    private string _selectedAvatar = "🧒";
+    private string _message = string.Empty;
+    private UserProfile? _profileToDelete;
+
+    private static readonly string[] _avatarOptions = new[]
+    {
+        "🧒", "👧", "👦", "🧑", "👩", "👨", "🦁", "🐯", "🐸", "🐶", "🐱", "🦊",
+        "🐻", "🦄", "🐼", "🐨", "🐙", "🐬", "🦋", "🌟"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AchievementService.SeedAchievementsAsync();
+        _profiles = await ProfileService.GetProfilesAsync();
+        _loading = false;
+    }
+
+    private void SelectProfile(UserProfile profile)
+    {
+        ProfileService.SetActiveProfile(profile);
+        _message = $"✅ Profile '{profile.Name}' is now active!";
+    }
+
+    private async Task CreateProfile()
+    {
+        if (string.IsNullOrWhiteSpace(_newProfileName))
+            return;
+
+        var profile = await ProfileService.CreateProfileAsync(_newProfileName.Trim(), _selectedAvatar);
+        _profiles = await ProfileService.GetProfilesAsync();
+        _newProfileName = string.Empty;
+        _message = $"🎉 Profile '{profile.Name}' created!";
+    }
+
+    private void ConfirmDelete(UserProfile profile)
+    {
+        _profileToDelete = profile;
+    }
+
+    private async Task DeleteProfile()
+    {
+        if (_profileToDelete == null) return;
+        await ProfileService.DeleteProfileAsync(_profileToDelete.Id);
+        _profiles = await ProfileService.GetProfilesAsync();
+        _message = $"Profile '{_profileToDelete.Name}' deleted.";
+        _profileToDelete = null;
+    }
+}

@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using KidsDictionaryApp.Data;
 using KidsDictionaryApp.Services.Interfaces;
 using KidsDictionaryApp.Services.Implementations;
@@ -99,6 +99,9 @@ namespace KidsDictionaryApp
             builder.Services.AddSingleton<IDictionaryService, DictionaryService>();
             builder.Services.AddSingleton<IWordHistoryService, WordHistoryService>();
             builder.Services.AddSingleton<IFavoritesService, FavoritesService>();
+            builder.Services.AddSingleton<IProfileService, ProfileService>();
+            builder.Services.AddSingleton<IProgressService, ProgressService>();
+            builder.Services.AddSingleton<IAchievementService, AchievementService>();
             // Platform-specific text-to-speech
 #if ANDROID
             builder.Services.AddSingleton<ITextToSpeechService, KidsDictionaryApp.Platforms.Android.AndroidTextToSpeechService>();

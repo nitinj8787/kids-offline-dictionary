@@ -3,6 +3,9 @@
 @using KidsDictionaryApp.Services.Interfaces
 @inject IWordHistoryService HistoryService
 @inject IWordRepository WordRepository
+@inject IProfileService ProfileService
+@inject IProgressService ProgressService
+@inject IAchievementService AchievementService
 
 <div class="dictionary-page">
     <h1 class="app-title">🎮 Match the Word</h1>
@@ -27,6 +30,16 @@
             <h2 class="game-complete-title">Well Done!</h2>
             <p class="game-complete-score">You matched all @_pairs.Count words!</p>
             <p class="game-complete-attempts">Attempts: @_attempts</p>
+            @if (_newAchievements.Count > 0)
+            {
+                <div class="achievement-toast">
+                    🏅 New badge@(_newAchievements.Count > 1 ? "s" : "") earned!
+                    @foreach (var a in _newAchievements)
+                    {
+                        <span class="toast-badge">@a.BadgeEmoji @a.Name</span>
+                    }
+                </div>
+            }
             <button class="btn-play-again" @onclick="StartGame">🔄 Play Again</button>
         </div>
     }
@@ -98,6 +111,7 @@
 
     private string _feedbackMessage = string.Empty;
     private string _feedbackClass = string.Empty;
+    private List<Achievement> _newAchievements = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -205,6 +219,19 @@
             {
                 await Task.Delay(600);
                 _gameComplete = true;
+
+                // Record game score for the active profile
+                if (ProfileService.ActiveProfile != null)
+                {
+                    await ProgressService.RecordGameScoreAsync(
+                        ProfileService.ActiveProfile.Id,
+                        "Match Game",
+                        _pairs.Count * 10,
+                        _attempts,
+                        completed: true);
+                    _newAchievements = await AchievementService.CheckAndAwardAchievementsAsync(
+                        ProfileService.ActiveProfile.Id);
+                }
             }
         }
         else

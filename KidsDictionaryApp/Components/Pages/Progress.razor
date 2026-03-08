@@ -1,0 +1,170 @@
+@page "/progress"
+@using KidsDictionaryApp.Models
+@using KidsDictionaryApp.Services.Interfaces
+@inject IProfileService ProfileService
+@inject IProgressService ProgressService
+@inject IAchievementService AchievementService
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<div class="dictionary-page">
+    <h1 class="app-title">📊 Progress</h1>
+
+    @if (ProfileService.ActiveProfile == null)
+    {
+        <p class="app-subtitle">No profile selected.</p>
+        <div class="status-message">
+            Please <a href="profiles">select a profile</a> to view progress.
+        </div>
+    }
+    else
+    {
+        var profile = ProfileService.ActiveProfile;
+
+        <p class="app-subtitle">Progress for <strong>@profile.AvatarEmoji @profile.Name</strong></p>
+
+        <div class="progress-stats-grid">
+            <div class="stat-card">
+                <div class="stat-emoji">⭐</div>
+                <div class="stat-value">@profile.TotalScore</div>
+                <div class="stat-label">Total Score</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-emoji">📖</div>
+                <div class="stat-value">@_uniqueWordCount</div>
+                <div class="stat-label">Words Explored</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-emoji">🧠</div>
+                <div class="stat-value">@_learnedWordCount</div>
+                <div class="stat-label">Words Learned</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-emoji">🎮</div>
+                <div class="stat-value">@_gamesCompleted</div>
+                <div class="stat-label">Games Won</div>
+            </div>
+        </div>
+
+        @if (_newAchievements.Count > 0)
+        {
+            <div class="achievement-toast">
+                🎉 New badge@(_newAchievements.Count > 1 ? "s" : "") unlocked!
+                @foreach (var a in _newAchievements)
+                {
+                    <span class="toast-badge">@a.BadgeEmoji @a.Name</span>
+                }
+            </div>
+        }
+
+        <div class="progress-section">
+            <h2 class="section-title">🏅 Achievements (@_earnedCount / @_totalAchievements)</h2>
+            <div class="achievement-progress-bar-container">
+                <div class="achievement-progress-bar"
+                     style="width: @(_totalAchievements > 0 ? (_earnedCount * 100 / _totalAchievements) : 0)%">
+                </div>
+            </div>
+            <a href="achievements" class="btn-view-all">View All Badges →</a>
+        </div>
+
+        <div class="progress-section">
+            <h2 class="section-title">📖 Recently Explored Words</h2>
+            @if (_wordProgress.Count == 0)
+            {
+                <div class="status-message">No words explored yet. Start searching! 🔍</div>
+            }
+            else
+            {
+                <div class="word-progress-list">
+                    @foreach (var wp in _wordProgress.Take(10))
+                    {
+                        <div class="word-progress-item">
+                            <span class="word-progress-text">@wp.WordText</span>
+                            <span class="word-progress-count">@wp.TimesLookedUp × looked up</span>
+                            @if (wp.IsLearned)
+                            {
+                                <span class="word-learned-badge">✅ Learned</span>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="progress-section">
+            <h2 class="section-title">🎮 Recent Game Sessions</h2>
+            @if (_gameScores.Count == 0)
+            {
+                <div class="status-message">No games played yet. Try a game! 🎯</div>
+            }
+            else
+            {
+                <div class="game-score-list">
+                    @foreach (var gs in _gameScores.Take(10))
+                    {
+                        <div class="game-score-item">
+                            <span class="game-score-name">@gs.GameName</span>
+                            <span class="game-score-result">@(gs.Completed ? "✅ Won" : "🔄 Played") | Attempts: @gs.Attempts</span>
+                            <span class="game-score-date">@gs.PlayedAt.ToLocalTime().ToString("MMM dd, HH:mm")</span>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private int _uniqueWordCount;
+    private int _learnedWordCount;
+    private int _gamesCompleted;
+    private int _earnedCount;
+    private int _totalAchievements;
+    private List<ProfileWordProgress> _wordProgress = new();
+    private List<ProfileGameScore> _gameScores = new();
+    private List<Achievement> _newAchievements = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        ProfileService.ActiveProfileChanged += OnProfileChanged;
+        await LoadDataAsync();
+    }
+
+    private async void OnProfileChanged()
+    {
+        await LoadDataAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadDataAsync()
+    {
+        var profile = ProfileService.ActiveProfile;
+        if (profile == null) return;
+
+        _wordProgress = await ProgressService.GetWordProgressAsync(profile.Id);
+        _gameScores = await ProgressService.GetGameScoresAsync(profile.Id);
+        _uniqueWordCount = _wordProgress.Count;
+        _learnedWordCount = _wordProgress.Count(w => w.IsLearned);
+        _gamesCompleted = await ProgressService.GetGamesCompletedCountAsync(profile.Id);
+
+        var allAchievements = await AchievementService.GetAllAchievementsAsync();
+        var earned = await AchievementService.GetEarnedAchievementsAsync(profile.Id);
+        _totalAchievements = allAchievements.Count;
+        _earnedCount = earned.Count;
+
+        _newAchievements = await AchievementService.CheckAndAwardAchievementsAsync(profile.Id);
+
+        // Refresh profile score if achievements were awarded
+        if (_newAchievements.Count > 0)
+        {
+            var refreshed = await ProfileService.GetProfileAsync(profile.Id);
+            if (refreshed != null)
+                ProfileService.SetActiveProfile(refreshed);
+        }
+    }
+
+    public void Dispose()
+    {
+        ProfileService.ActiveProfileChanged -= OnProfileChanged;
+    }
+}

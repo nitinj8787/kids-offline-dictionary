@@ -17,6 +17,11 @@ namespace KidsDictionaryApp.Data
             await _database.CreateTableAsync<Word>();
             await _database.CreateTableAsync<WordHistory>();
             await _database.CreateTableAsync<FavoriteWord>();
+            await _database.CreateTableAsync<UserProfile>();
+            await _database.CreateTableAsync<ProfileWordProgress>();
+            await _database.CreateTableAsync<ProfileGameScore>();
+            await _database.CreateTableAsync<Achievement>();
+            await _database.CreateTableAsync<ProfileAchievement>();
         }
 
         public SQLiteAsyncConnection Database => _database;

@@ -5,7 +5,7 @@
              xmlns:components="clr-namespace:KidsDictionaryApp.Components"
              x:Class="KidsDictionaryApp.MainPage">
 
-    <BlazorWebView x:Name="blazorWebView" HostPage="wwwroot/index.html">
+    <BlazorWebView x:Name="blazorWebView" HostPage="wwwroot/index.html" StartPath="/about">
         <BlazorWebView.RootComponents>
             <RootComponent Selector="#app" ComponentType="{x:Type components:Routes}" />
         </BlazorWebView.RootComponents>

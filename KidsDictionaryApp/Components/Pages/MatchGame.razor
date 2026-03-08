@@ -92,6 +92,7 @@
 </ProfileGuard>
 
 @code {
+    private record MatchItem(int PairId, string Text)
     {
         public bool IsMatched { get; set; }
         public bool IsWrong { get; set; }

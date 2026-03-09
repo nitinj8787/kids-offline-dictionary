@@ -6,7 +6,7 @@ namespace KidsDictionaryApp.Services.Interfaces
     {
         Task<List<UserProfile>> GetProfilesAsync();
         Task<UserProfile?> GetProfileAsync(int id);
-        Task<UserProfile> CreateProfileAsync(string name, string avatarEmoji);
+        Task<UserProfile> CreateProfileAsync(string name, string avatarEmoji, string? parentEmail = null);
         Task UpdateProfileAsync(UserProfile profile);
         Task DeleteProfileAsync(int id);
 

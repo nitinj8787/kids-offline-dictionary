@@ -3,6 +3,7 @@
 @using KidsDictionaryApp.Services.Interfaces
 @inject IProfileService ProfileService
 @inject IAchievementService AchievementService
+@inject ISyncService SyncService
 @inject NavigationManager Navigation
 
 <div class="dictionary-page">
@@ -35,7 +36,27 @@
                         {
                             <div class="profile-active-badge">✅ Active</div>
                         }
+                        @if (profile.LastSyncedAt.HasValue)
+                        {
+                            <div class="profile-sync-badge" title="Last synced: @profile.LastSyncedAt.Value.ToLocalTime()">
+                                ☁️ Synced
+                            </div>
+                        }
+                        else if (!string.IsNullOrEmpty(profile.ParentEmail))
+                        {
+                            <div class="profile-sync-badge" title="Ready to sync">☁️ Offline</div>
+                        }
                         <div class="profile-actions">
+                            @if (!string.IsNullOrEmpty(profile.ParentEmail))
+                            {
+                                <button class="btn-profile-action btn-sync"
+                                        @onclick:stopPropagation="true"
+                                        @onclick="() => SyncProfile(profile)"
+                                        title="Sync profile to cloud"
+                                        disabled="@_syncing">
+                                    🔄
+                                </button>
+                            }
                             <button class="btn-profile-action btn-delete"
                                     @onclick:stopPropagation="true"
                                     @onclick="() => ConfirmDelete(profile)"
@@ -53,9 +74,14 @@
             <div class="create-profile-form">
                 <input class="search-input"
                        type="text"
-                       placeholder="Enter name..."
+                       placeholder="Enter avatar name..."
                        @bind="_newProfileName"
                        maxlength="30" />
+                <input class="search-input"
+                       type="email"
+                       placeholder="Parent email (optional — for cloud sync)"
+                       @bind="_newProfileEmail"
+                       maxlength="256" />
                 <div class="avatar-picker">
                     @foreach (var emoji in _avatarOptions)
                     {
@@ -76,6 +102,30 @@
         {
             <div class="status-message">@_message</div>
         }
+
+        @if (_showOtpPanel)
+        {
+            <div class="modal-overlay">
+                <div class="modal-card">
+                    <h3>🔐 Verify your email</h3>
+                    <p>Enter the 6-digit code sent to <strong>@_otpEmail</strong>.</p>
+                    <input class="search-input"
+                           type="text"
+                           placeholder="6-digit code"
+                           @bind="_otpCode"
+                           maxlength="6"
+                           inputmode="numeric" />
+                    @if (!string.IsNullOrEmpty(_otpError))
+                    {
+                        <div class="status-message">⚠️ @_otpError</div>
+                    }
+                    <div class="modal-actions">
+                        <button class="btn-search" @onclick="VerifyOtp" disabled="@_syncing">Verify</button>
+                        <button class="btn-cancel" @onclick="CancelOtp">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        }
     }
 
     @if (_profileToDelete != null)
@@ -95,10 +145,19 @@
 @code {
     private List<UserProfile> _profiles = new();
     private bool _loading = true;
+    private bool _syncing = false;
     private string _newProfileName = string.Empty;
+    private string _newProfileEmail = string.Empty;
     private string _selectedAvatar = "🧒";
     private string _message = string.Empty;
     private UserProfile? _profileToDelete;
+
+    // OTP flow state
+    private bool _showOtpPanel = false;
+    private string _otpEmail = string.Empty;
+    private string _otpCode = string.Empty;
+    private string _otpError = string.Empty;
+    private UserProfile? _pendingSyncProfile;
 
     private static readonly string[] _avatarOptions = new[]
     {
@@ -124,10 +183,97 @@
         if (string.IsNullOrWhiteSpace(_newProfileName))
             return;
 
-        var profile = await ProfileService.CreateProfileAsync(_newProfileName.Trim(), _selectedAvatar);
+        var profile = await ProfileService.CreateProfileAsync(
+            _newProfileName.Trim(),
+            _selectedAvatar,
+            string.IsNullOrWhiteSpace(_newProfileEmail) ? null : _newProfileEmail.Trim());
+
         _profiles = await ProfileService.GetProfilesAsync();
         _newProfileName = string.Empty;
+        _newProfileEmail = string.Empty;
         _message = $"🎉 Profile '{profile.Name}' created!";
+    }
+
+    private async Task SyncProfile(UserProfile profile)
+    {
+        if (string.IsNullOrEmpty(profile.ParentEmail))
+        {
+            _message = "⚠️ No parent email on this profile. Please add one to enable cloud sync.";
+            return;
+        }
+
+        // If already authenticated with the same email, sync directly
+        if (SyncService.IsAuthenticated &&
+            string.Equals(SyncService.AuthenticatedEmail, profile.ParentEmail, StringComparison.OrdinalIgnoreCase))
+        {
+            await DoSync(profile);
+            return;
+        }
+
+        // Otherwise request OTP and show verification panel
+        _syncing = true;
+        _message = string.Empty;
+
+        var sent = await SyncService.RequestOtpAsync(profile.ParentEmail);
+        _syncing = false;
+
+        if (!sent)
+        {
+            _message = "⚠️ Could not reach the server. Check your internet connection and try again.";
+            return;
+        }
+
+        _otpEmail = profile.ParentEmail;
+        _otpCode = string.Empty;
+        _otpError = string.Empty;
+        _pendingSyncProfile = profile;
+        _showOtpPanel = true;
+    }
+
+    private async Task VerifyOtp()
+    {
+        if (string.IsNullOrWhiteSpace(_otpCode) || _pendingSyncProfile == null) return;
+
+        _syncing = true;
+        var verified = await SyncService.VerifyOtpAsync(_otpEmail, _otpCode.Trim());
+        _syncing = false;
+
+        if (!verified)
+        {
+            _otpError = "Invalid or expired code. Please try again.";
+            return;
+        }
+
+        _showOtpPanel = false;
+        await DoSync(_pendingSyncProfile);
+        _pendingSyncProfile = null;
+    }
+
+    private void CancelOtp()
+    {
+        _showOtpPanel = false;
+        _pendingSyncProfile = null;
+        _otpCode = string.Empty;
+        _otpError = string.Empty;
+    }
+
+    private async Task DoSync(UserProfile profile)
+    {
+        _syncing = true;
+        _message = "🔄 Syncing profile...";
+
+        var result = await SyncService.SyncProfileAsync(profile);
+        _syncing = false;
+
+        if (result.Success)
+        {
+            _profiles = await ProfileService.GetProfilesAsync();
+            _message = $"☁️ Profile '{profile.Name}' synced successfully!";
+        }
+        else
+        {
+            _message = $"⚠️ Sync failed: {result.ErrorMessage}";
+        }
     }
 
     private void ConfirmDelete(UserProfile profile)

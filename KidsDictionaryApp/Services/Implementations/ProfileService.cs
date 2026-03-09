@@ -33,14 +33,15 @@ namespace KidsDictionaryApp.Services.Implementations
                 .FirstOrDefaultAsync();
         }
 
-        public async Task<UserProfile> CreateProfileAsync(string name, string avatarEmoji)
+        public async Task<UserProfile> CreateProfileAsync(string name, string avatarEmoji, string? parentEmail = null)
         {
             var profile = new UserProfile
             {
                 Name = name.Trim(),
                 AvatarEmoji = avatarEmoji,
                 CreatedAt = DateTime.UtcNow,
-                TotalScore = 0
+                TotalScore = 0,
+                ParentEmail = string.IsNullOrWhiteSpace(parentEmail) ? null : parentEmail.Trim().ToLowerInvariant()
             };
             await _db.InsertAsync(profile);
 

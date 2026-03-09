@@ -171,6 +171,19 @@ namespace KidsDictionaryApp
             builder.Services.AddSingleton<IProfileService, ProfileService>();
             builder.Services.AddSingleton<IProgressService, ProgressService>();
             builder.Services.AddSingleton<IAchievementService, AchievementService>();
+
+            // Centralized profile sync service
+            // The base URL should be set to the deployed Azure App Service URL in production.
+            // Leave it empty to disable sync (offline-only mode).
+            var apiBaseUrl = ""; // e.g. "https://your-api.azurewebsites.net"
+            builder.Services.AddSingleton<ISyncService>(sp =>
+            {
+                var profileService = sp.GetRequiredService<IProfileService>();
+                var http = new System.Net.Http.HttpClient();
+                if (!string.IsNullOrWhiteSpace(apiBaseUrl))
+                    http.BaseAddress = new Uri(apiBaseUrl);
+                return new SyncService(http, profileService);
+            });
             // Platform-specific text-to-speech
 #if ANDROID
             builder.Services.AddSingleton<ITextToSpeechService, KidsDictionaryApp.Platforms.Android.AndroidTextToSpeechService>();

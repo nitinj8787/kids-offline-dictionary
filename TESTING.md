@@ -202,6 +202,38 @@ Invoke-RestMethod -Uri http://localhost:5150/health
 
 ## 9. Verify the SQLite Database
 
+### Standalone SQL scripts
+
+Two ready-to-run SQL scripts are provided in the `db/` folder at the repo root.
+They mirror the schema that the app and API create automatically at startup, and
+can be applied to a blank database file **before** any user creates a profile.
+
+| Script | Target database |
+|--------|----------------|
+| [`db/offline-schema.sql`](db/offline-schema.sql) | Offline MAUI app database (`dictionary.db`) |
+| [`db/central-schema.sql`](db/central-schema.sql) | Central API database (`kidsdictionary_api_dev.db`) |
+
+Apply a script with the SQLite CLI:
+
+```powershell
+# Offline app database
+sqlite3 dictionary.db ".read db/offline-schema.sql"
+
+# Central API database
+sqlite3 kidsdictionary_api_dev.db ".read db/central-schema.sql"
+```
+
+Or open **DB Browser for SQLite** → **New Database** → choose **Execute SQL** →
+paste the script content → **Run All**.
+
+> **Note:** Both the app and the API run these statements automatically at
+> startup via `DictionaryDbContext.InitializeAsync()` and
+> `ApiDbContext.EnsureSchemaAsync()`, so manually running the scripts is
+> optional. They are provided as a reference and for pre-creating the schema
+> outside of the app lifecycle.
+
+### Inspecting the databases
+
 The API creates **`kidsdictionary_api_dev.db`** in the project's working
 directory (`KidsDictionaryApi/bin/Debug/net9.0/`) when running under the
 `Development` profile.
@@ -214,13 +246,25 @@ You can inspect it with any SQLite viewer (e.g.,
 | `UserAccount` | One row per parent email |
 | `OtpRecord` | OTP history (`IsUsed = 1` after verification) |
 | `CentralProfile` | Synced profiles with `AvatarName`, `TotalScore`, `LastSyncedAt` |
+| `AppUsage` | Event log entries (optional analytics) |
 
 The MAUI app database lives in the Windows app-data folder:
 ```
 %LOCALAPPDATA%\Packages\com.companyname.kidsdictionaryapp_...\LocalState\dictionary.db
 ```
 Open it the same way to confirm `RemoteId` and `LastSyncedAt` were written back
-after a successful sync.
+after a successful sync. The offline database contains these tables:
+
+| Table | Contents |
+|-------|----------|
+| `Word` | Bundled dictionary words |
+| `WordHistory` | Recently looked-up words |
+| `FavoriteWord` | Saved favourite words |
+| `UserProfile` | Child profiles (incl. `ParentEmail`, `RemoteId`, `LastSyncedAt`) |
+| `ProfileWordProgress` | Per-profile word lookup counts and learned status |
+| `ProfileGameScore` | Per-profile game session scores |
+| `Achievement` | Achievement definitions (seeded at startup) |
+| `ProfileAchievement` | Achievements earned by each profile |
 
 ---
 

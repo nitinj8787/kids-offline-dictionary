@@ -62,10 +62,11 @@ namespace KidsDictionaryApi.Services
 
         private static string GenerateSecureCode()
         {
-            // Use a cryptographically secure random number within 0–999999
+            // Use a cryptographically secure random number within 0–999999.
+            // Convert bytes to uint to avoid the Math.Abs(int.MinValue) pitfall.
             var bytes = new byte[4];
             System.Security.Cryptography.RandomNumberGenerator.Fill(bytes);
-            var value = Math.Abs(BitConverter.ToInt32(bytes, 0)) % 1_000_000;
+            var value = (BitConverter.ToUInt32(bytes, 0) % 1_000_000);
             return value.ToString("D6");
         }
     }

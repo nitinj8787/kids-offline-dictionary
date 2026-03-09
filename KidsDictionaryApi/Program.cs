@@ -20,6 +20,14 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 // ─── JWT Authentication ───────────────────────────────────────────────────────
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("Jwt:Key is not configured.");
+
+// Reject the default placeholder to prevent accidental insecure deployments
+const string placeholderKey = "CHANGE_THIS_SECRET_KEY_IN_PRODUCTION_MINIMUM_32_CHARS";
+if (!builder.Environment.IsDevelopment() && jwtKey == placeholderKey)
+    throw new InvalidOperationException(
+        "Jwt:Key must be changed from the default placeholder before running in production. " +
+        "Use an environment variable or Azure Key Vault to supply the secret.");
+
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "KidsDictionaryApi";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "KidsDictionaryApp";
 

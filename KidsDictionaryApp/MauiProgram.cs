@@ -173,9 +173,9 @@ namespace KidsDictionaryApp
             builder.Services.AddSingleton<IAchievementService, AchievementService>();
 
             // Centralized profile sync service
-            // The base URL should be set to the deployed Azure Function URL in production.
+            // The base URL should be set to the deployed Azure App Service URL in production.
             // Leave it empty to disable sync (offline-only mode).
-            var apiBaseUrl = ""; // e.g. "https://your-function-app.azurewebsites.net"
+            var apiBaseUrl = ""; // e.g. "https://your-api.azurewebsites.net"
             builder.Services.AddHttpClient<ISyncService, SyncService>(client =>
             {
                 if (!string.IsNullOrWhiteSpace(apiBaseUrl))

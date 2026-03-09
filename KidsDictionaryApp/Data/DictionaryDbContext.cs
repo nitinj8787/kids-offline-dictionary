@@ -17,7 +17,8 @@ namespace KidsDictionaryApp.Data
             await _database.CreateTableAsync<Word>();
             await _database.CreateTableAsync<WordHistory>();
             await _database.CreateTableAsync<FavoriteWord>();
-            await _database.CreateTableAsync<UserProfile>();
+            // MigrateTable adds new columns (ParentEmail, RemoteId, LastSyncedAt) to existing databases
+            await _database.CreateTableAsync<UserProfile>(CreateFlags.MigrateTable);
             await _database.CreateTableAsync<ProfileWordProgress>();
             await _database.CreateTableAsync<ProfileGameScore>();
             await _database.CreateTableAsync<Achievement>();

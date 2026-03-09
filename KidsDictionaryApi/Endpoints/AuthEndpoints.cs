@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+using Dapper;
 using KidsDictionaryApi.Data;
 using KidsDictionaryApi.Models;
 using KidsDictionaryApi.Services;
@@ -49,12 +49,15 @@ namespace KidsDictionaryApi.Endpoints
             logger.LogInformation("OTP requested for {Email}. Code: {Code}", email, code);
 
             // Ensure or create the user account
-            var account = await db.UserAccounts.FirstOrDefaultAsync(u => u.Email == email);
+            using var conn = db.CreateConnection();
+            var account = await conn.QuerySingleOrDefaultAsync<UserAccount>(
+                "SELECT * FROM UserAccount WHERE Email = @Email", new { Email = email });
+
             if (account == null)
             {
-                account = new UserAccount { Email = email, CreatedAt = DateTime.UtcNow };
-                db.UserAccounts.Add(account);
-                await db.SaveChangesAsync();
+                await conn.ExecuteAsync(
+                    "INSERT INTO UserAccount (Email, CreatedAt) VALUES (@Email, @CreatedAt)",
+                    new { Email = email, CreatedAt = DateTime.UtcNow });
             }
 
             return Results.Ok(new
@@ -78,16 +81,25 @@ namespace KidsDictionaryApi.Endpoints
             if (!valid)
                 return Results.UnprocessableEntity(new { error = "Invalid or expired OTP." });
 
-            // Find or create the account
-            var account = await db.UserAccounts.FirstOrDefaultAsync(u => u.Email == email);
+            using var conn = db.CreateConnection();
+
+            var account = await conn.QuerySingleOrDefaultAsync<UserAccount>(
+                "SELECT * FROM UserAccount WHERE Email = @Email", new { Email = email });
+
             if (account == null)
             {
-                account = new UserAccount { Email = email, CreatedAt = DateTime.UtcNow };
-                db.UserAccounts.Add(account);
+                await conn.ExecuteAsync(
+                    "INSERT INTO UserAccount (Email, CreatedAt) VALUES (@Email, @CreatedAt)",
+                    new { Email = email, CreatedAt = DateTime.UtcNow });
+                account = await conn.QuerySingleAsync<UserAccount>(
+                    "SELECT * FROM UserAccount WHERE Email = @Email", new { Email = email });
             }
-
-            account.LastLoginAt = DateTime.UtcNow;
-            await db.SaveChangesAsync();
+            else
+            {
+                await conn.ExecuteAsync(
+                    "UPDATE UserAccount SET LastLoginAt = @Now WHERE Id = @Id",
+                    new { Now = DateTime.UtcNow, account.Id });
+            }
 
             var token = tokenService.GenerateToken(account.Id, account.Email);
 

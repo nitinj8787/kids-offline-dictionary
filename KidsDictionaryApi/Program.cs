@@ -1,6 +1,5 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using KidsDictionaryApi.Data;
 using KidsDictionaryApi.Endpoints;
@@ -8,10 +7,14 @@ using KidsDictionaryApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ─── Database ────────────────────────────────────────────────────────────────
-builder.Services.AddDbContext<ApiDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? "Data Source=kidsdictionary_api.db"));
+// ─── Database (Dapper connection factory) ─────────────────────────────────────
+builder.Services.AddSingleton<ApiDbContext>(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    var connectionString = config.GetConnectionString("DefaultConnection")
+        ?? "Data Source=kidsdictionary_api.db";
+    return new ApiDbContext(connectionString);
+});
 
 // ─── Services ────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IOtpService, OtpService>();
@@ -56,12 +59,9 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// ─── Database Migration (auto-create schema on startup) ───────────────────────
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
-    db.Database.EnsureCreated();
-}
+// ─── Database Schema (idempotent — safe on every startup) ────────────────────
+var dbContext = app.Services.GetRequiredService<ApiDbContext>();
+await dbContext.EnsureSchemaAsync();
 
 // ─── Middleware ────────────────────────────────────────────────────────────────
 if (app.Environment.IsDevelopment())

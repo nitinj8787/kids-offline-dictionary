@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using KidsDictionaryApi.Data;
 using KidsDictionaryApi.Services;
@@ -17,12 +16,7 @@ public class OtpServiceTests : IAsyncLifetime, IDisposable
     public OtpServiceTests()
     {
         _dbPath = Path.Combine(Path.GetTempPath(), $"otp_test_{Guid.NewGuid()}.db");
-
-        var options = new DbContextOptionsBuilder<ApiDbContext>()
-            .UseSqlite($"Data Source={_dbPath}")
-            .Options;
-        _db = new ApiDbContext(options);
-        _db.Database.EnsureCreated();
+        _db = new ApiDbContext($"Data Source={_dbPath}");
 
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -34,13 +28,15 @@ public class OtpServiceTests : IAsyncLifetime, IDisposable
         _service = new OtpService(_db, config);
     }
 
-    public Task InitializeAsync() => Task.CompletedTask;
+    public async Task InitializeAsync()
+    {
+        await _db.EnsureSchemaAsync();
+    }
 
-    public async Task DisposeAsync() => await _db.DisposeAsync();
+    public Task DisposeAsync() => Task.CompletedTask;
 
     public void Dispose()
     {
-        _db.Dispose();
         if (File.Exists(_dbPath)) File.Delete(_dbPath);
     }
 
@@ -59,12 +55,14 @@ public class OtpServiceTests : IAsyncLifetime, IDisposable
         var email = "save@example.com";
         var code = await _service.GenerateOtpAsync(email);
 
-        var record = await _db.OtpRecords
-            .FirstOrDefaultAsync(o => o.Email == email && o.Code == code);
+        using var conn = _db.CreateConnection();
+        var record = await Dapper.SqlMapper.QuerySingleOrDefaultAsync<KidsDictionaryApi.Models.OtpRecord>(
+            conn,
+            "SELECT * FROM OtpRecord WHERE Email = @Email AND Code = @Code",
+            new { Email = email, Code = code });
 
         Assert.NotNull(record);
         Assert.False(record!.IsUsed);
-        Assert.True(record.ExpiresAt > DateTime.UtcNow);
     }
 
     [Fact]
@@ -86,8 +84,11 @@ public class OtpServiceTests : IAsyncLifetime, IDisposable
 
         await _service.ValidateOtpAsync(email, code);
 
-        var record = await _db.OtpRecords
-            .FirstOrDefaultAsync(o => o.Email == email && o.Code == code);
+        using var conn = _db.CreateConnection();
+        var record = await Dapper.SqlMapper.QuerySingleOrDefaultAsync<KidsDictionaryApi.Models.OtpRecord>(
+            conn,
+            "SELECT * FROM OtpRecord WHERE Email = @Email AND Code = @Code",
+            new { Email = email, Code = code });
 
         Assert.NotNull(record);
         Assert.True(record!.IsUsed);

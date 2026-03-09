@@ -1,43 +1,84 @@
-using Microsoft.EntityFrameworkCore;
-using KidsDictionaryApi.Models;
+using System.Data;
+using Dapper;
+using Microsoft.Data.Sqlite;
 
 namespace KidsDictionaryApi.Data
 {
-    public class ApiDbContext : DbContext
+    /// <summary>
+    /// Lightweight connection factory for Dapper queries.
+    /// Creates the database schema on first use via <see cref="EnsureSchemaAsync"/>.
+    /// </summary>
+    public class ApiDbContext
     {
-        public ApiDbContext(DbContextOptions<ApiDbContext> options) : base(options) { }
+        private readonly string _connectionString;
 
-        public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
-        public DbSet<CentralProfile> CentralProfiles => Set<CentralProfile>();
-        public DbSet<AppUsage> AppUsages => Set<AppUsage>();
-        public DbSet<OtpRecord> OtpRecords => Set<OtpRecord>();
-
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        public ApiDbContext(string connectionString)
         {
-            base.OnModelCreating(modelBuilder);
+            _connectionString = connectionString;
+        }
 
-            // UserAccount: email must be unique
-            modelBuilder.Entity<UserAccount>()
-                .HasIndex(u => u.Email)
-                .IsUnique();
+        /// <summary>Opens and returns a new SQLite connection. The caller is responsible for disposing it.</summary>
+        public IDbConnection CreateConnection()
+        {
+            var conn = new SqliteConnection(_connectionString);
+            conn.Open();
+            return conn;
+        }
 
-            // CentralProfile belongs to UserAccount
-            modelBuilder.Entity<CentralProfile>()
-                .HasOne(p => p.UserAccount)
-                .WithMany(u => u.Profiles)
-                .HasForeignKey(p => p.UserAccountId)
-                .OnDelete(DeleteBehavior.Cascade);
+        /// <summary>
+        /// Ensures all required tables and indexes exist. Safe to call on every startup.
+        /// </summary>
+        public async Task EnsureSchemaAsync()
+        {
+            using var conn = new SqliteConnection(_connectionString);
+            await conn.OpenAsync();
 
-            // AppUsage belongs to UserAccount
-            modelBuilder.Entity<AppUsage>()
-                .HasOne(a => a.UserAccount)
-                .WithMany(u => u.Usages)
-                .HasForeignKey(a => a.UserAccountId)
-                .OnDelete(DeleteBehavior.Cascade);
+            // Enable foreign key enforcement for this connection
+            await conn.ExecuteAsync("PRAGMA foreign_keys = ON;");
 
-            // OtpRecord: index on email for fast lookup
-            modelBuilder.Entity<OtpRecord>()
-                .HasIndex(o => o.Email);
+            await conn.ExecuteAsync(@"
+                CREATE TABLE IF NOT EXISTS UserAccount (
+                    Id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Email       TEXT    NOT NULL,
+                    CreatedAt   TEXT    NOT NULL,
+                    LastLoginAt TEXT
+                );
+
+                CREATE UNIQUE INDEX IF NOT EXISTS IX_UserAccount_Email ON UserAccount(Email);
+
+                CREATE TABLE IF NOT EXISTS CentralProfile (
+                    Id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                    UserAccountId INTEGER NOT NULL,
+                    AvatarName    TEXT    NOT NULL,
+                    AvatarEmoji   TEXT    NOT NULL DEFAULT '🧒',
+                    TotalScore    INTEGER NOT NULL DEFAULT 0,
+                    CreatedAt     TEXT    NOT NULL,
+                    UpdatedAt     TEXT    NOT NULL,
+                    LastSyncedAt  TEXT,
+                    FOREIGN KEY (UserAccountId) REFERENCES UserAccount(Id) ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS AppUsage (
+                    Id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                    UserAccountId    INTEGER NOT NULL,
+                    CentralProfileId INTEGER,
+                    EventType        TEXT    NOT NULL,
+                    EventData        TEXT,
+                    CreatedAt        TEXT    NOT NULL,
+                    FOREIGN KEY (UserAccountId) REFERENCES UserAccount(Id) ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS OtpRecord (
+                    Id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Email     TEXT    NOT NULL,
+                    Code      TEXT    NOT NULL,
+                    ExpiresAt TEXT    NOT NULL,
+                    IsUsed    INTEGER NOT NULL DEFAULT 0,
+                    CreatedAt TEXT    NOT NULL
+                );
+
+                CREATE INDEX IF NOT EXISTS IX_OtpRecord_Email ON OtpRecord(Email);
+            ");
         }
     }
 }

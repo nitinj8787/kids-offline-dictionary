@@ -176,10 +176,13 @@ namespace KidsDictionaryApp
             // The base URL should be set to the deployed Azure App Service URL in production.
             // Leave it empty to disable sync (offline-only mode).
             var apiBaseUrl = ""; // e.g. "https://your-api.azurewebsites.net"
-            builder.Services.AddHttpClient<ISyncService, SyncService>(client =>
+            builder.Services.AddSingleton<ISyncService>(sp =>
             {
+                var profileService = sp.GetRequiredService<IProfileService>();
+                var http = new System.Net.Http.HttpClient();
                 if (!string.IsNullOrWhiteSpace(apiBaseUrl))
-                    client.BaseAddress = new Uri(apiBaseUrl);
+                    http.BaseAddress = new Uri(apiBaseUrl);
+                return new SyncService(http, profileService);
             });
             // Platform-specific text-to-speech
 #if ANDROID

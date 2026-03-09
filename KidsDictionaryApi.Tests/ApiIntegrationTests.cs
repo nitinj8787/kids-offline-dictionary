@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using KidsDictionaryApi.Data;
 using KidsDictionaryApi.Endpoints;
@@ -29,15 +28,13 @@ public class ApiIntegrationTests : IAsyncLifetime
         {
             builder.ConfigureServices(services =>
             {
-                // Remove existing DbContext registration and replace with a
-                // unique SQLite file, keeping the same provider (avoids
-                // "multiple providers" conflict that occurs with InMemory swap).
+                // Replace the ApiDbContext singleton with one pointing at a unique
+                // test-specific SQLite file so each test run is fully isolated.
                 var descriptor = services.SingleOrDefault(
-                    d => d.ServiceType == typeof(DbContextOptions<ApiDbContext>));
+                    d => d.ServiceType == typeof(ApiDbContext));
                 if (descriptor != null) services.Remove(descriptor);
 
-                services.AddDbContext<ApiDbContext>(options =>
-                    options.UseSqlite($"Data Source={_dbPath}"));
+                services.AddSingleton(new ApiDbContext($"Data Source={_dbPath}"));
             });
         });
 

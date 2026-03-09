@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+using Dapper;
 using KidsDictionaryApi.Data;
 using KidsDictionaryApi.Models;
 
@@ -17,46 +17,48 @@ namespace KidsDictionaryApi.Services
 
         public async Task<string> GenerateOtpAsync(string email)
         {
+            using var conn = _db.CreateConnection();
+
             // Invalidate any existing unused OTPs for this email
-            var existing = await _db.OtpRecords
-                .Where(o => o.Email == email && !o.IsUsed && o.ExpiresAt > DateTime.UtcNow)
-                .ToListAsync();
-            foreach (var old in existing)
-            {
-                old.IsUsed = true;
-            }
+            await conn.ExecuteAsync(
+                "UPDATE OtpRecord SET IsUsed = 1 WHERE Email = @Email AND IsUsed = 0 AND ExpiresAt > @Now",
+                new { Email = email, Now = DateTime.UtcNow });
 
             // Generate a cryptographically random 6-digit OTP
             var code = GenerateSecureCode();
 
-            _db.OtpRecords.Add(new OtpRecord
-            {
-                Email = email.ToLowerInvariant(),
-                Code = code,
-                ExpiresAt = DateTime.UtcNow.AddMinutes(_expiryMinutes),
-                IsUsed = false,
-                CreatedAt = DateTime.UtcNow
-            });
+            await conn.ExecuteAsync(
+                @"INSERT INTO OtpRecord (Email, Code, ExpiresAt, IsUsed, CreatedAt)
+                  VALUES (@Email, @Code, @ExpiresAt, 0, @CreatedAt)",
+                new
+                {
+                    Email = email.ToLowerInvariant(),
+                    Code = code,
+                    ExpiresAt = DateTime.UtcNow.AddMinutes(_expiryMinutes),
+                    CreatedAt = DateTime.UtcNow
+                });
 
-            await _db.SaveChangesAsync();
             return code;
         }
 
         public async Task<bool> ValidateOtpAsync(string email, string code)
         {
             var normalizedEmail = email.ToLowerInvariant();
-            var record = await _db.OtpRecords
-                .Where(o => o.Email == normalizedEmail
-                         && o.Code == code
-                         && !o.IsUsed
-                         && o.ExpiresAt > DateTime.UtcNow)
-                .OrderByDescending(o => o.CreatedAt)
-                .FirstOrDefaultAsync();
+            using var conn = _db.CreateConnection();
+
+            var record = await conn.QuerySingleOrDefaultAsync<OtpRecord>(
+                @"SELECT * FROM OtpRecord
+                  WHERE Email = @Email AND Code = @Code AND IsUsed = 0 AND ExpiresAt > @Now
+                  ORDER BY CreatedAt DESC
+                  LIMIT 1",
+                new { Email = normalizedEmail, Code = code, Now = DateTime.UtcNow });
 
             if (record == null) return false;
 
-            record.IsUsed = true;
-            await _db.SaveChangesAsync();
+            await conn.ExecuteAsync(
+                "UPDATE OtpRecord SET IsUsed = 1 WHERE Id = @Id",
+                new { record.Id });
+
             return true;
         }
 
@@ -66,7 +68,7 @@ namespace KidsDictionaryApi.Services
             // Convert bytes to uint to avoid the Math.Abs(int.MinValue) pitfall.
             var bytes = new byte[4];
             System.Security.Cryptography.RandomNumberGenerator.Fill(bytes);
-            var value = (BitConverter.ToUInt32(bytes, 0) % 1_000_000);
+            var value = BitConverter.ToUInt32(bytes, 0) % 1_000_000;
             return value.ToString("D6");
         }
     }

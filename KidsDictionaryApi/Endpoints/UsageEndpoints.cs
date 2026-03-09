@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
+using Dapper;
 using KidsDictionaryApi.Data;
 using KidsDictionaryApi.Models;
 
@@ -37,16 +37,19 @@ namespace KidsDictionaryApi.Endpoints
             if (string.IsNullOrWhiteSpace(dto.EventType))
                 return Results.BadRequest(new { error = "EventType is required." });
 
-            db.AppUsages.Add(new AppUsage
-            {
-                UserAccountId = accountId.Value,
-                CentralProfileId = dto.CentralProfileId,
-                EventType = dto.EventType.Trim(),
-                EventData = dto.EventData,
-                CreatedAt = DateTime.UtcNow
-            });
+            using var conn = db.CreateConnection();
+            await conn.ExecuteAsync(
+                @"INSERT INTO AppUsage (UserAccountId, CentralProfileId, EventType, EventData, CreatedAt)
+                  VALUES (@UserAccountId, @CentralProfileId, @EventType, @EventData, @CreatedAt)",
+                new
+                {
+                    UserAccountId = accountId.Value,
+                    dto.CentralProfileId,
+                    EventType = dto.EventType.Trim(),
+                    dto.EventData,
+                    CreatedAt = DateTime.UtcNow
+                });
 
-            await db.SaveChangesAsync();
             return Results.Ok(new { message = "Usage recorded." });
         }
 
@@ -55,14 +58,14 @@ namespace KidsDictionaryApi.Endpoints
             var accountId = GetUserAccountId(user);
             if (accountId == null) return Results.Unauthorized();
 
-            var usages = await db.AppUsages
-                .Where(u => u.UserAccountId == accountId)
-                .OrderByDescending(u => u.CreatedAt)
-                .Take(100)
-                .Select(u => new UsageDto(u.Id, u.CentralProfileId, u.EventType, u.EventData, u.CreatedAt))
-                .ToListAsync();
+            using var conn = db.CreateConnection();
+            var usages = await conn.QueryAsync<AppUsage>(
+                @"SELECT * FROM AppUsage WHERE UserAccountId = @AccountId
+                  ORDER BY CreatedAt DESC LIMIT 100",
+                new { AccountId = accountId });
 
-            return Results.Ok(usages);
+            return Results.Ok(usages.Select(u =>
+                new UsageDto(u.Id, u.CentralProfileId, u.EventType, u.EventData, u.CreatedAt)));
         }
 
         public record RecordUsageDto(string EventType, int? CentralProfileId = null, string? EventData = null);

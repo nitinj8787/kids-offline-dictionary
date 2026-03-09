@@ -15,44 +15,72 @@ namespace KidsDictionaryApp.Platforms.Android
             _logger = logger;
         }
 
-        public Task<string?> ListenAsync()
+        public async Task<string?> ListenAsync()
         {
+            // Request RECORD_AUDIO permission at runtime (required on Android 6.0+).
+            var permissionStatus = await Permissions.RequestAsync<Permissions.Microphone>();
+            if (permissionStatus != PermissionStatus.Granted)
+            {
+                _logger.LogWarning("Android speech recognition: microphone permission not granted.");
+                return null;
+            }
+
             var tcs = new TaskCompletionSource<string?>();
 
-            var activity = Microsoft.Maui.ApplicationModel.Platform.CurrentActivity;
-            if (activity == null)
+            // SpeechRecognizer must be created and used on the UI thread (main Looper).
+            await MainThread.InvokeOnMainThreadAsync(() =>
             {
-                _logger.LogWarning("Android speech recognition: no current activity available.");
-                tcs.SetResult(null);
-                return tcs.Task;
-            }
+                try
+                {
+                    var activity = Microsoft.Maui.ApplicationModel.Platform.CurrentActivity;
+                    if (activity == null)
+                    {
+                        _logger.LogWarning("Android speech recognition: no current activity available.");
+                        tcs.TrySetResult(null);
+                        return;
+                    }
 
-            if (!SpeechRecognizer.IsRecognitionAvailable(activity))
-            {
-                _logger.LogWarning("Android speech recognition is not available on this device.");
-                tcs.SetResult(null);
-                return tcs.Task;
-            }
+                    if (!SpeechRecognizer.IsRecognitionAvailable(activity))
+                    {
+                        _logger.LogWarning("Android speech recognition is not available on this device.");
+                        tcs.TrySetResult(null);
+                        return;
+                    }
 
-            var recognizer = SpeechRecognizer.CreateSpeechRecognizer(activity);
-            if (recognizer == null)
-            {
-                _logger.LogWarning("Android speech recognizer could not be created.");
-                tcs.SetResult(null);
-                return tcs.Task;
-            }
+                    var recognizer = SpeechRecognizer.CreateSpeechRecognizer(activity);
+                    if (recognizer == null)
+                    {
+                        _logger.LogWarning("Android speech recognizer could not be created.");
+                        tcs.TrySetResult(null);
+                        return;
+                    }
 
-            var listener = new SpeechListener(tcs, () => recognizer.Destroy(), _logger);
-            recognizer.SetRecognitionListener(listener);
+                    try
+                    {
+                        var listener = new SpeechListener(tcs, () => recognizer.Destroy(), _logger);
+                        recognizer.SetRecognitionListener(listener);
 
-            var intent = new Intent(RecognizerIntent.ActionRecognizeSpeech);
-            intent.PutExtra(RecognizerIntent.ExtraLanguageModel, RecognizerIntent.LanguageModelFreeForm);
-            intent.PutExtra(RecognizerIntent.ExtraMaxResults, 1);
-            intent.PutExtra(RecognizerIntent.ExtraCallingPackage, activity.PackageName);
+                        var intent = new Intent(RecognizerIntent.ActionRecognizeSpeech);
+                        intent.PutExtra(RecognizerIntent.ExtraLanguageModel, RecognizerIntent.LanguageModelFreeForm);
+                        intent.PutExtra(RecognizerIntent.ExtraMaxResults, 1);
+                        intent.PutExtra(RecognizerIntent.ExtraCallingPackage, activity.PackageName);
 
-            activity.RunOnUiThread(() => recognizer.StartListening(intent));
+                        recognizer.StartListening(intent);
+                    }
+                    catch
+                    {
+                        recognizer.Destroy();
+                        throw;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Android speech recognition setup failed.");
+                    tcs.TrySetException(ex);
+                }
+            });
 
-            return tcs.Task;
+            return await tcs.Task;
         }
 
         private sealed class SpeechListener : Java.Lang.Object, IRecognitionListener

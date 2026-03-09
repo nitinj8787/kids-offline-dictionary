@@ -21,24 +21,32 @@ namespace KidsDictionaryApp
             builder.Services.AddMauiBlazorWebView();
 
 #if DEBUG
-    		builder.Services.AddBlazorWebViewDeveloperTools();
-    		builder.Logging.AddDebug();
+            builder.Services.AddBlazorWebViewDeveloperTools();
+            builder.Logging.AddDebug();
 #endif
 
             // Database - will copy from Resources\Raw on first run
             builder.Services.AddSingleton<DictionaryDbContext>(sp =>
             {
                 var dbPath = Path.Combine(FileSystem.AppDataDirectory, "dictionary.db");
-                
+
+                // Add debugging
+                System.Diagnostics.Debug.WriteLine($"[DB] App data directory: {FileSystem.AppDataDirectory}");
+                System.Diagnostics.Debug.WriteLine($"[DB] Target path: {dbPath}");
+                System.Diagnostics.Debug.WriteLine($"[DB] File exists: {File.Exists(dbPath)}");
+
                 // Copy pre-populated database from Resources\Raw if it doesn't exist or is invalid
                 if (!File.Exists(dbPath) || !IsValidSQLiteDatabase(dbPath))
                 {
                     try
                     {
+                        System.Diagnostics.Debug.WriteLine($"[DB] Attempting to copy from app package...");
+
                         // Remove any invalid/incomplete file before copying
                         if (File.Exists(dbPath))
                         {
                             File.Delete(dbPath);
+                            System.Diagnostics.Debug.WriteLine($"[DB] Deleted invalid existing file");
                         }
 
                         // Ensure directory exists
@@ -50,20 +58,57 @@ namespace KidsDictionaryApp
 
                         // Open source stream from app package
                         Stream? stream = null;
-                        
+                        bool foundDatabase = false;
+
 #if WINDOWS
-                        // For Windows unpackaged apps, try file system path first
-                        var windowsDbPath = Path.Combine(AppContext.BaseDirectory, "dictionary.db");
-                        if (File.Exists(windowsDbPath))
+                        // For Windows, try multiple possible locations
+                        var possiblePaths = new[]
                         {
-                            stream = File.OpenRead(windowsDbPath);
+                            Path.Combine(AppContext.BaseDirectory, "dictionary.db"),
+                            Path.Combine(AppContext.BaseDirectory, "Resources", "Raw", "dictionary.db"),
+                            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dictionary.db"),
+                            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "Raw", "dictionary.db")
+                        };
+
+                        System.Diagnostics.Debug.WriteLine($"[DB] Windows: Searching for database...");
+                        foreach (var path in possiblePaths)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[DB] Windows: Checking: {path}");
+                            if (File.Exists(path))
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[DB] Windows: Found database at: {path}");
+                                stream = File.OpenRead(path);
+                                foundDatabase = true;
+                                break;
+                            }
                         }
-                        else
+
+                        if (!foundDatabase)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[DB] Windows: Database not found in file system, trying app package");
 #endif
+                        try
                         {
                             stream = FileSystem.OpenAppPackageFileAsync("dictionary.db").GetAwaiter().GetResult();
+                            foundDatabase = true;
+                            System.Diagnostics.Debug.WriteLine($"[DB] Found database in app package root");
                         }
-                        
+                        catch
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[DB] Not in app package root, trying Resources/Raw/dictionary.db");
+                            stream = FileSystem.OpenAppPackageFileAsync("Resources/Raw/dictionary.db").GetAwaiter().GetResult();
+                            foundDatabase = true;
+                            System.Diagnostics.Debug.WriteLine($"[DB] Found database in Resources/Raw");
+                        }
+#if WINDOWS
+                        }
+#endif
+
+                        if (!foundDatabase || stream == null)
+                        {
+                            throw new FileNotFoundException("Could not locate dictionary.db in app package");
+                        }
+
                         using (stream)
                         {
                             // Create destination file and copy
@@ -73,24 +118,48 @@ namespace KidsDictionaryApp
                                 fileStream.Flush(flushToDisk: true);
                             }
                         }
-                        
+
+                        System.Diagnostics.Debug.WriteLine($"[DB] File copied, size: {new FileInfo(dbPath).Length}");
+
                         // Verify the file was created successfully and is a valid SQLite database
                         if (!File.Exists(dbPath) || new FileInfo(dbPath).Length == 0 || !IsValidSQLiteDatabase(dbPath))
                         {
                             throw new InvalidOperationException("Database file was not copied correctly.");
                         }
+
+                        System.Diagnostics.Debug.WriteLine($"[DB] Database initialized successfully");
                     }
                     catch (Exception ex)
                     {
-                        // If copy fails, delete the incomplete file
-                        if (File.Exists(dbPath))
+                        System.Diagnostics.Debug.WriteLine($"[DB] ERROR: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"[DB] Stack trace: {ex.StackTrace}");
+
+                        // Fallback: Create empty database with schema
+                        System.Diagnostics.Debug.WriteLine($"[DB] FALLBACK: Creating empty database with schema");
+                        try
                         {
-                            File.Delete(dbPath);
+                            if (File.Exists(dbPath))
+                            {
+                                File.Delete(dbPath);
+                            }
+
+                            var context = new DictionaryDbContext(dbPath);
+                            context.InitializeAsync().GetAwaiter().GetResult();
+                            System.Diagnostics.Debug.WriteLine($"[DB] Empty database created successfully as fallback");
+                            return context;
                         }
-                        throw new InvalidOperationException($"Failed to initialize database: {ex.Message}", ex);
+                        catch (Exception innerEx)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[DB] CRITICAL: Failed to create fallback database: {innerEx.Message}");
+                            throw new InvalidOperationException($"Failed to initialize database: {ex.Message}", ex);
+                        }
                     }
                 }
-                
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[DB] Using existing database at {dbPath}");
+                }
+
                 return new DictionaryDbContext(dbPath);
             });
 
@@ -151,30 +220,5 @@ namespace KidsDictionaryApp
                 return false;
             }
         }
-
-#if DEBUG
-        // Development-only method to create/regenerate the database file in Resources\Raw
-        // Run this once manually when you need to update the bundled database
-        public static async Task RegenerateRawDatabaseAsync()
-        {
-            var projectPath = @"C:\Users\nitin\source\repos\KidsDictionaryApp\KidsDictionaryApp";
-            var rawDbPath = Path.Combine(projectPath, "Resources", "Raw", "dictionary.db");
-
-            // Ensure directory exists
-            var rawDbDirectory = Path.GetDirectoryName(rawDbPath);
-            if (!string.IsNullOrEmpty(rawDbDirectory))
-            {
-                Directory.CreateDirectory(rawDbDirectory);
-            }
-
-            // Delete if exists to recreate
-            if (File.Exists(rawDbPath))
-                File.Delete(rawDbPath);
-
-            await DatabaseSeeder.CreatePrePopulatedDatabase(rawDbPath);
-            Console.WriteLine($"Database created successfully at: {rawDbPath}");
-            Console.WriteLine("Make sure the file is set to 'MauiAsset' build action in the .csproj");
-        }
-#endif
     }
 }

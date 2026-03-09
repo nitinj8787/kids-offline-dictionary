@@ -4,6 +4,7 @@ using Microsoft.IdentityModel.Tokens;
 using KidsDictionaryApi.Data;
 using KidsDictionaryApi.Endpoints;
 using KidsDictionaryApi.Services;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -67,6 +68,11 @@ await dbContext.EnsureSchemaAsync();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference(options =>
+    {
+        options.WithTitle("Kids Dictionary API")
+               .WithTheme(ScalarTheme.Purple);
+    });
 }
 
 app.UseAuthentication();

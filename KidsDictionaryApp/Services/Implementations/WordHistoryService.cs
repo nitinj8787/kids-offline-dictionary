@@ -42,5 +42,31 @@ namespace KidsDictionaryApp.Services.Implementations
         {
             await _db.DeleteAllAsync<WordHistory>();
         }
+
+        public async Task<int> GetTodayCountAsync()
+        {
+            var todayUtc = DateTime.UtcNow.Date;
+            var tomorrowUtc = todayUtc.AddDays(1);
+            return await _db.Table<WordHistory>()
+                .Where(h => h.LookedUpAt >= todayUtc && h.LookedUpAt < tomorrowUtc)
+                .CountAsync();
+        }
+
+        public async Task<int> GetThisWeekCountAsync()
+        {
+            var weekStartUtc = DateTime.UtcNow.Date.AddDays(-6);
+            return await _db.Table<WordHistory>()
+                .Where(h => h.LookedUpAt >= weekStartUtc)
+                .CountAsync();
+        }
+
+        public async Task<int> GetThisMonthCountAsync()
+        {
+            var now = DateTime.UtcNow;
+            var monthStartUtc = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            return await _db.Table<WordHistory>()
+                .Where(h => h.LookedUpAt >= monthStartUtc)
+                .CountAsync();
+        }
     }
 }

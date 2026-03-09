@@ -7,5 +7,8 @@ namespace KidsDictionaryApp.Services.Interfaces
         Task AddAsync(string word);
         Task<List<WordHistory>> GetHistoryAsync();
         Task ClearAsync();
+        Task<int> GetTodayCountAsync();
+        Task<int> GetThisWeekCountAsync();
+        Task<int> GetThisMonthCountAsync();
     }
 }

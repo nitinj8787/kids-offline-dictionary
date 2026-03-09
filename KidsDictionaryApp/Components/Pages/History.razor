@@ -15,34 +15,69 @@
             <div class="loading-spinner">⏳ Loading...</div>
         </div>
     }
-    else if (_history.Count == 0)
-    {
-        <div class="status-message">No words looked up yet. Start searching! 🔍</div>
-    }
     else
     {
-        <div class="list-actions">
-            <button class="btn-clear" @onclick="ClearHistory">🗑️ Clear History</button>
+        <div class="progress-stats-grid">
+            <div class="stat-card">
+                <div class="stat-emoji">📅</div>
+                <div class="stat-value">@_todayCount</div>
+                <div class="stat-label">Today</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-emoji">📆</div>
+                <div class="stat-value">@_weekCount</div>
+                <div class="stat-label">This Week</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-emoji">🗓️</div>
+                <div class="stat-value">@_monthCount</div>
+                <div class="stat-label">This Month</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-emoji">📚</div>
+                <div class="stat-value">@_history.Count</div>
+                <div class="stat-label">All Time</div>
+            </div>
         </div>
 
-        <div class="word-list">
-            @foreach (var item in _history)
+        @if (_history.Count == 0)
+        {
+            <div class="status-message">No words looked up yet. Start searching! 🔍</div>
+        }
+        else
+        {
+            <div class="list-actions">
+                <button class="btn-clear" @onclick="ClearHistory">🗑️ Clear History</button>
+            </div>
+
+            @foreach (var group in GetGroupedHistory())
             {
-                <div class="word-list-item @(_selectedWordText == item.WordText ? "selected" : "")" @onclick="() => SelectWordByText(item.WordText)">
-                    <span class="word-list-text">@item.WordText</span>
-                    <span class="word-list-date">@item.LookedUpAt.ToLocalTime().ToString("MMM d, h:mm tt")</span>
-                </div>
-                @if (_selectedWordText == item.WordText)
-                {
-                    <div class="inline-word-detail">
-                        <WordDetailCard Word="_selectedWord"
-                                        ShowCloseButton="true"
-                                        OnClose="CloseDetail"
-                                        OnSynonymClick="NavigateToSynonym" />
+                <div class="history-date-group">
+                    <div class="history-date-header">
+                        <span>@group.Label</span>
+                        <span class="history-date-count">@group.Items.Count word@(group.Items.Count == 1 ? "" : "s")</span>
                     </div>
-                }
+                    <div class="word-list">
+                        @foreach (var item in group.Items)
+                        {
+                            <div class="word-list-item @(_selectedWordText == item.WordText ? "selected" : "")" @onclick="() => SelectWordByText(item.WordText)">
+                                <span class="word-list-text">@item.WordText</span>
+                                <span class="word-list-date">@item.LookedUpAt.ToLocalTime().ToString("MMM d, h:mm tt")</span>
+                            </div>
+                            @if (_selectedWordText == item.WordText)
+                            {
+                                <div class="inline-word-detail">
+                                    <WordDetailCard Word="_selectedWord"
+                                                    ShowCloseButton="true"
+                                                    OnClose="CloseDetail"
+                                                    OnSynonymClick="NavigateToSynonym" />
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
             }
-        </div>
+        }
     }
 </div>
 </ProfileGuard>
@@ -51,16 +86,51 @@
     private List<WordHistory>? _history;
     private Word? _selectedWord;
     private string? _selectedWordText;
+    private int _todayCount;
+    private int _weekCount;
+    private int _monthCount;
 
     protected override async Task OnInitializedAsync()
     {
         _history = await HistoryService.GetHistoryAsync();
+        _todayCount = await HistoryService.GetTodayCountAsync();
+        _weekCount = await HistoryService.GetThisWeekCountAsync();
+        _monthCount = await HistoryService.GetThisMonthCountAsync();
+    }
+
+    private IEnumerable<(string Label, List<WordHistory> Items)> GetGroupedHistory()
+    {
+        if (_history == null) yield break;
+
+        var today = DateTime.Today;
+        var yesterday = today.AddDays(-1);
+        var weekStart = today.AddDays(-6);
+        var monthStart = new DateTime(today.Year, today.Month, 1);
+
+        var todayItems = _history.Where(h => h.LookedUpAt.ToLocalTime().Date == today).ToList();
+        var yesterdayItems = _history.Where(h => h.LookedUpAt.ToLocalTime().Date == yesterday).ToList();
+        var thisWeekItems = _history.Where(h =>
+            h.LookedUpAt.ToLocalTime().Date >= weekStart &&
+            h.LookedUpAt.ToLocalTime().Date < yesterday).ToList();
+        var thisMonthItems = _history.Where(h =>
+            h.LookedUpAt.ToLocalTime().Date >= monthStart &&
+            h.LookedUpAt.ToLocalTime().Date < weekStart).ToList();
+        var olderItems = _history.Where(h => h.LookedUpAt.ToLocalTime().Date < monthStart).ToList();
+
+        if (todayItems.Any()) yield return ("📅 Today", todayItems);
+        if (yesterdayItems.Any()) yield return ("📅 Yesterday", yesterdayItems);
+        if (thisWeekItems.Any()) yield return ("📆 This Week", thisWeekItems);
+        if (thisMonthItems.Any()) yield return ("🗓️ This Month", thisMonthItems);
+        if (olderItems.Any()) yield return ("📚 Earlier", olderItems);
     }
 
     private async Task ClearHistory()
     {
         await HistoryService.ClearAsync();
         _history = new List<WordHistory>();
+        _todayCount = 0;
+        _weekCount = 0;
+        _monthCount = 0;
         _selectedWord = null;
         _selectedWordText = null;
     }
